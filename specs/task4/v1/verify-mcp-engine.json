@@ -1,0 +1,236 @@
+{
+  "title": "Verify MCP Scoring Engine v1",
+  "version": "1.0.0",
+  "description": "Specifies how VerifyMCP consumes criteria, evidence, and plugin results to produce a deterministic VerificationArtifact with an overall verdict.",
+
+  "scoring_algorithm": {
+    "description": "Ordered steps the engine executes for each verification request.",
+    "steps": [
+      {
+        "step": 1,
+        "name": "validate_inputs",
+        "description": "Verify all required inputs are present: verification_request_id, correlation_id, execution_plan, build_report, evidence_ids.",
+        "on_missing": {
+          "action": "produce_blocked_artifact",
+          "rationale": "Fail-closed: missing inputs cannot be verified."
+        }
+      },
+      {
+        "step": 2,
+        "name": "extract_criteria",
+        "description": "Extract all acceptance_criteria from the ExecutionPlan. Each criterion has criteria_id, description, required flag, and verification_type.",
+        "output": "criteria_list"
+      },
+      {
+        "step": 3,
+        "name": "resolve_evidence",
+        "description": "For each criteria_id, resolve evidence_ids from BuildReport.evidence_map via the evidence registry. Verify evidence exists and is accessible.",
+        "on_missing_evidence": {
+          "criteria_status": "blocked",
+          "rationale": "FC-001: required criterion without corresponding evidence."
+        }
+      },
+      {
+        "step": 4,
+        "name": "select_plugins",
+        "description": "For each criterion, select the appropriate verifier plugin based on verification_type (unit, integration, e2e, visual, api, freshness).",
+        "on_no_plugin": {
+          "criteria_status": "blocked",
+          "rationale": "No plugin available for required verification type."
+        }
+      },
+      {
+        "step": 5,
+        "name": "execute_plugins",
+        "description": "Execute each selected plugin with the criterion's evidence. Plugin runs in sandbox with bounded timeout and resource limits per the plugin ABI.",
+        "output": "plugin_results",
+        "on_plugin_error": {
+          "criteria_status": "blocked",
+          "rationale": "Plugin execution failure. Fail-closed: cannot verify."
+        },
+        "on_plugin_timeout": {
+          "criteria_status": "blocked",
+          "rationale": "Plugin exceeded timeout. Fail-closed: cannot verify."
+        }
+      },
+      {
+        "step": 6,
+        "name": "evaluate_criteria",
+        "description": "Map each plugin result to a criterion status (pass|warn|fail|blocked). Apply fail-closed rules.",
+        "rules": [
+          "Plugin result pass -> criteria status pass",
+          "Plugin result warn + required criterion -> criteria status blocked (FC-002)",
+          "Plugin result warn + optional criterion -> criteria status warn (rationale required)",
+          "Plugin result fail -> criteria status fail",
+          "Plugin result error/timeout -> criteria status blocked"
+        ]
+      },
+      {
+        "step": 7,
+        "name": "check_ladder_compliance",
+        "description": "Verify that all check types in the workflow class ladder have been executed and passed.",
+        "on_incomplete_ladder": {
+          "action": "set_overall_blocked",
+          "rationale": "Ladder compliance failure: required check type not executed or not passed."
+        }
+      },
+      {
+        "step": 8,
+        "name": "check_freshness",
+        "description": "If freshness_required, execute freshness checks on time-sensitive claims from ResearchReport or ExecutionPlan.",
+        "on_stale_claim": {
+          "criteria_status": "fail",
+          "rationale": "FC-005: freshness check failure on time-sensitive claim."
+        }
+      },
+      {
+        "step": 9,
+        "name": "compute_overall_status",
+        "description": "Aggregate individual criteria statuses into overall_status using the aggregation rules.",
+        "output": "overall_status"
+      },
+      {
+        "step": 10,
+        "name": "produce_artifact",
+        "description": "Produce the VerificationArtifact with all criteria_results, freshness_results, ladder_compliance, and overall_status. Compute artifact_hash.",
+        "output": "VerificationArtifact"
+      }
+    ]
+  },
+
+  "overall_status_aggregation": {
+    "description": "Rules for computing overall_status from individual criteria statuses.",
+    "rules": [
+      {
+        "id": "OSA-001",
+        "condition": "Any required criterion has status blocked",
+        "overall_status": "blocked",
+        "rationale": "FC-001/FC-003: blocked evidence cannot produce pass."
+      },
+      {
+        "id": "OSA-002",
+        "condition": "Any required criterion has status fail",
+        "overall_status": "fail",
+        "rationale": "FC-003: failed required criterion prevents pass."
+      },
+      {
+        "id": "OSA-003",
+        "condition": "Any required criterion has status warn (without policy exception)",
+        "overall_status": "blocked",
+        "rationale": "FC-002: required warn treated as blocked."
+      },
+      {
+        "id": "OSA-004",
+        "condition": "All required criteria are pass, some optional criteria are warn",
+        "overall_status": "warn",
+        "rationale": "Optional warn with rationale allows continuation."
+      },
+      {
+        "id": "OSA-005",
+        "condition": "All criteria are pass",
+        "overall_status": "pass",
+        "rationale": "All checks satisfied."
+      }
+    ],
+    "precedence": ["blocked", "fail", "warn", "pass"],
+    "rule": "Overall status is the highest-severity status among required criteria. OSA rules evaluated in order; first match wins."
+  },
+
+  "fail_closed_enforcement": {
+    "description": "How FC-001 through FC-005 are enforced in the engine.",
+    "implementations": [
+      {
+        "rule_ref": "FC-001",
+        "enforced_at": "step 3 (resolve_evidence)",
+        "mechanism": "Missing evidence for required criterion -> blocked"
+      },
+      {
+        "rule_ref": "FC-002",
+        "enforced_at": "step 6 (evaluate_criteria)",
+        "mechanism": "Required criterion with warn -> blocked unless policy exception"
+      },
+      {
+        "rule_ref": "FC-003",
+        "enforced_at": "step 9 (compute_overall_status)",
+        "mechanism": "Any required non-pass -> overall cannot be pass"
+      },
+      {
+        "rule_ref": "FC-004",
+        "enforced_at": "step 10 (produce_artifact)",
+        "mechanism": "fail_closed_enforced is always set to true. Artifact rejected if false."
+      },
+      {
+        "rule_ref": "FC-005",
+        "enforced_at": "step 8 (check_freshness)",
+        "mechanism": "Stale time-sensitive claim -> fail, not warn"
+      }
+    ]
+  },
+
+  "authority_conformance_enforcement": {
+    "description": "How AC-001 through AC-005 are enforced in the engine.",
+    "implementations": [
+      {
+        "rule_ref": "AC-001",
+        "enforced_at": "step 2 (extract_criteria) + post-hoc",
+        "mechanism": "Every schema field must have fieldOwnership entry. Missing -> blocked."
+      },
+      {
+        "rule_ref": "AC-002",
+        "enforced_at": "step 2 (extract_criteria) + post-hoc",
+        "mechanism": "Every fieldOwnership path must resolve. Orphaned -> blocked."
+      },
+      {
+        "rule_ref": "AC-003",
+        "enforced_at": "verifier_gate enforcement point",
+        "mechanism": "Planner-writtenBy fields checked for routing content. Violation -> fail."
+      },
+      {
+        "rule_ref": "AC-004",
+        "enforced_at": "verifier_gate enforcement point",
+        "mechanism": "Orchestrator-writtenBy fields checked for plan content. Violation -> fail."
+      },
+      {
+        "rule_ref": "AC-005",
+        "enforced_at": "step 3 (resolve_evidence)",
+        "mechanism": "BuildReport.evidence_map must cover all criteria_ids. Missing -> blocked."
+      }
+    ]
+  },
+
+  "artifact_hash_computation": {
+    "algorithm": "SHA-256",
+    "scope": "All fields of the VerificationArtifact except artifact_hash itself.",
+    "serialization": "Canonical JSON (sorted keys, no whitespace).",
+    "encoding": "hex-lowercase",
+    "immutability_rule": "Once artifact_hash is computed and the artifact is persisted, no field may be modified."
+  },
+
+  "engine_invariants": [
+    {
+      "id": "EI-001",
+      "rule": "The engine always produces exactly one VerificationArtifact per verification request.",
+      "enforced_by": "engine_contract"
+    },
+    {
+      "id": "EI-002",
+      "rule": "The engine never produces overall_status: pass if any required criterion is not pass.",
+      "enforced_by": "OSA rules + FC-003"
+    },
+    {
+      "id": "EI-003",
+      "rule": "The engine is deterministic: same inputs produce the same artifact (excluding timestamps).",
+      "enforced_by": "engine_contract"
+    },
+    {
+      "id": "EI-004",
+      "rule": "Plugin failures are fail-closed: error or timeout -> blocked, never silently skipped.",
+      "enforced_by": "step 5 error handling"
+    },
+    {
+      "id": "EI-005",
+      "rule": "correlation_id in the artifact must be byte-identical to the request correlation_id.",
+      "enforced_by": "engine_contract + OP-003"
+    }
+  ]
+}

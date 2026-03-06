@@ -1,0 +1,300 @@
+{
+  "title": "Verifier Plugin ABI v1",
+  "version": "1.0.0",
+  "description": "Application Binary Interface for verifier plugins. Defines input/output schema, lifecycle, sandbox requirements, capability flags, and error handling.",
+
+  "plugin_identity": {
+    "required_fields": [
+      {
+        "field": "plugin_id",
+        "type": "string",
+        "description": "Unique identifier for the plugin. Format: <check_type>.<variant>. Example: unit.jest, integration.http, freshness.web."
+      },
+      {
+        "field": "check_type",
+        "type": "string",
+        "enum": ["unit", "integration", "e2e", "visual", "api", "freshness"],
+        "description": "Which check type this plugin implements."
+      },
+      {
+        "field": "version",
+        "type": "string",
+        "description": "Semver version of the plugin."
+      },
+      {
+        "field": "capability_flags",
+        "type": "object",
+        "description": "Declares what resources the plugin needs."
+      }
+    ]
+  },
+
+  "capability_flags": {
+    "description": "Flags a plugin declares to indicate required resources. The engine grants or denies based on sandbox policy.",
+    "flags": {
+      "requires_fs_read": {
+        "type": "boolean",
+        "default": false,
+        "description": "Plugin needs to read files from the workspace."
+      },
+      "requires_fs_write": {
+        "type": "boolean",
+        "default": false,
+        "description": "Plugin needs to write temporary files (test output, screenshots)."
+      },
+      "requires_network": {
+        "type": "boolean",
+        "default": false,
+        "description": "Plugin needs network access (API checks, freshness lookups)."
+      },
+      "requires_web": {
+        "type": "boolean",
+        "default": false,
+        "description": "Plugin needs web browser access (visual checks, e2e tests)."
+      },
+      "requires_process_exec": {
+        "type": "boolean",
+        "default": false,
+        "description": "Plugin needs to execute subprocesses (test runners, build tools)."
+      }
+    },
+    "enforcement": "Capabilities not declared but attempted at runtime are denied by the sandbox."
+  },
+
+  "input_schema": {
+    "description": "What the engine passes to a plugin on invocation.",
+    "required": [
+      {
+        "field": "invocation_id",
+        "type": "uuid",
+        "description": "Unique ID for this plugin invocation. Used for correlation."
+      },
+      {
+        "field": "correlation_id",
+        "type": "uuid",
+        "description": "Workflow correlation ID. Echoed into output."
+      },
+      {
+        "field": "criteria_id",
+        "type": "string",
+        "description": "The acceptance criterion being verified."
+      },
+      {
+        "field": "criteria_description",
+        "type": "string",
+        "description": "Human-readable criterion description from the ExecutionPlan."
+      },
+      {
+        "field": "evidence_refs",
+        "type": "array",
+        "items": "EvidenceRef",
+        "description": "Resolved evidence references from the evidence registry. Each contains evidence_id, path, type, and hash."
+      },
+      {
+        "field": "check_type",
+        "type": "string",
+        "description": "The check type to execute (unit, integration, etc.)."
+      },
+      {
+        "field": "workflow_class",
+        "type": "string",
+        "description": "Current workflow class, for context-dependent checks."
+      }
+    ],
+    "optional": [
+      {
+        "field": "plugin_config",
+        "type": "object",
+        "description": "Plugin-specific configuration (test runner args, thresholds, etc.)."
+      },
+      {
+        "field": "freshness_claims",
+        "type": "array",
+        "description": "Time-sensitive claims to verify (freshness check type only)."
+      }
+    ]
+  },
+
+  "output_schema": {
+    "description": "What the plugin returns to the engine after execution.",
+    "required": [
+      {
+        "field": "invocation_id",
+        "type": "uuid",
+        "description": "Echoed from input."
+      },
+      {
+        "field": "correlation_id",
+        "type": "uuid",
+        "description": "Echoed from input."
+      },
+      {
+        "field": "criteria_id",
+        "type": "string",
+        "description": "Echoed from input."
+      },
+      {
+        "field": "status",
+        "type": "string",
+        "enum": ["pass", "warn", "fail", "error"],
+        "description": "Plugin verdict. Note: 'error' indicates plugin failure, mapped to 'blocked' by engine."
+      },
+      {
+        "field": "evidence_evaluated",
+        "type": "array",
+        "items": "string",
+        "description": "List of evidence_ids the plugin actually consumed."
+      },
+      {
+        "field": "rationale",
+        "type": "string",
+        "description": "Why this status was assigned."
+      },
+      {
+        "field": "execution_time_ms",
+        "type": "number",
+        "description": "Wall-clock time the plugin took."
+      }
+    ],
+    "optional": [
+      {
+        "field": "detail",
+        "type": "object",
+        "description": "Plugin-specific detail (test counts, failure messages, screenshot paths, etc.)."
+      },
+      {
+        "field": "produced_evidence",
+        "type": "array",
+        "description": "New evidence artifacts produced by the plugin (screenshots, test reports). Registered into the evidence registry."
+      },
+      {
+        "field": "freshness_results",
+        "type": "array",
+        "description": "Freshness check results (freshness plugin only)."
+      }
+    ]
+  },
+
+  "lifecycle": {
+    "phases": [
+      {
+        "phase": "load",
+        "description": "Engine discovers and loads the plugin. Validates plugin_id, check_type, version, and capability_flags.",
+        "on_failure": "Plugin marked unavailable. Criteria requiring this plugin get status: blocked."
+      },
+      {
+        "phase": "configure",
+        "description": "Engine passes plugin_config if provided. Plugin validates its own configuration.",
+        "on_failure": "Plugin returns error status with rationale."
+      },
+      {
+        "phase": "execute",
+        "description": "Engine invokes plugin with input_schema. Plugin runs verification and returns output_schema.",
+        "timeout_enforced": true,
+        "resource_limits_enforced": true
+      },
+      {
+        "phase": "teardown",
+        "description": "Engine releases plugin resources. Temporary files are cleaned up. Sandbox is torn down.",
+        "on_failure": "Logged but does not affect verdict."
+      }
+    ]
+  },
+
+  "timeout_policy": {
+    "default_timeout_ms": 30000,
+    "max_timeout_ms": 120000,
+    "per_check_type_defaults": {
+      "unit": 30000,
+      "integration": 60000,
+      "e2e": 120000,
+      "visual": 60000,
+      "api": 30000,
+      "freshness": 15000
+    },
+    "on_timeout": {
+      "status": "error",
+      "engine_maps_to": "blocked",
+      "rationale": "Plugin exceeded timeout limit."
+    }
+  },
+
+  "resource_policy": {
+    "max_memory_mb": 512,
+    "max_cpu_seconds": 60,
+    "max_disk_write_mb": 100,
+    "max_network_requests": 50,
+    "enforcement": "Sandbox enforces limits. Exceeding any limit terminates the plugin with error status."
+  },
+
+  "sandbox_requirements": {
+    "description": "Plugins execute in an isolated sandbox to prevent interference with the workflow or other plugins.",
+    "isolation_level": "process",
+    "rules": [
+      "Plugin cannot access workflow state, routing, or plan content.",
+      "Plugin can only access evidence referenced in evidence_refs.",
+      "Plugin file writes are confined to a temporary directory.",
+      "Plugin network access is gated by capability_flags.requires_network.",
+      "Plugin subprocess execution is gated by capability_flags.requires_process_exec."
+    ]
+  },
+
+  "error_handling": {
+    "plugin_errors": [
+      {
+        "error_type": "timeout",
+        "engine_response": "Set criteria status to blocked. Log timeout event.",
+        "retry": false
+      },
+      {
+        "error_type": "resource_exceeded",
+        "engine_response": "Set criteria status to blocked. Log resource violation.",
+        "retry": false
+      },
+      {
+        "error_type": "crash",
+        "engine_response": "Set criteria status to blocked. Log crash with stack trace if available.",
+        "retry": false
+      },
+      {
+        "error_type": "invalid_output",
+        "engine_response": "Set criteria status to blocked. Log schema validation failure.",
+        "retry": false
+      },
+      {
+        "error_type": "capability_denied",
+        "engine_response": "Set criteria status to blocked. Log capability violation.",
+        "retry": false
+      }
+    ],
+    "invariant": "No plugin error can produce a pass or warn status. All errors are fail-closed to blocked."
+  },
+
+  "abi_invariants": [
+    {
+      "id": "PA-001",
+      "rule": "Plugin output must echo invocation_id and correlation_id from input.",
+      "enforced_by": "engine_output_validation"
+    },
+    {
+      "id": "PA-002",
+      "rule": "Plugin cannot modify evidence in the registry. It can only read referenced evidence and produce new evidence.",
+      "enforced_by": "sandbox"
+    },
+    {
+      "id": "PA-003",
+      "rule": "Plugin status 'error' is always mapped to 'blocked' by the engine. Plugins cannot produce 'blocked' directly.",
+      "enforced_by": "engine_status_mapping"
+    },
+    {
+      "id": "PA-004",
+      "rule": "Capability flags are declared at load time and cannot be changed during execution.",
+      "enforced_by": "sandbox"
+    },
+    {
+      "id": "PA-005",
+      "rule": "Each plugin invocation is stateless. No state persists between invocations.",
+      "enforced_by": "sandbox"
+    }
+  ]
+}

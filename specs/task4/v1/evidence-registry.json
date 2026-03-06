@@ -1,0 +1,308 @@
+{
+  "title": "Evidence Registry v1",
+  "version": "1.0.0",
+  "description": "Canonical evidence storage, naming, hashing, and lookup protocol. All verification evidence flows through this registry.",
+
+  "evidence_types": {
+    "description": "All recognized evidence types and their storage requirements.",
+    "types": {
+      "diff": {
+        "description": "Code diff produced by a build action.",
+        "format": "unified_diff",
+        "storage": "text",
+        "extension": ".diff"
+      },
+      "test_log": {
+        "description": "Test runner output (unit, integration, e2e).",
+        "format": "structured_json_or_text",
+        "storage": "text",
+        "extension": ".log"
+      },
+      "command_log": {
+        "description": "Shell command execution log with exit codes.",
+        "format": "structured_json",
+        "storage": "text",
+        "extension": ".json"
+      },
+      "api_trace": {
+        "description": "HTTP request/response capture for API verification.",
+        "format": "structured_json",
+        "storage": "text",
+        "extension": ".json"
+      },
+      "screenshot": {
+        "description": "Visual capture for UI verification.",
+        "format": "png",
+        "storage": "binary",
+        "extension": ".png"
+      },
+      "research_report": {
+        "description": "Research findings artifact.",
+        "format": "structured_json",
+        "storage": "text",
+        "extension": ".json"
+      },
+      "source_references": {
+        "description": "Source URLs and citations for research claims.",
+        "format": "structured_json",
+        "storage": "text",
+        "extension": ".json"
+      },
+      "freshness_log": {
+        "description": "Timestamped freshness check results.",
+        "format": "structured_json",
+        "storage": "text",
+        "extension": ".json"
+      },
+      "transcript": {
+        "description": "Transcription output.",
+        "format": "text",
+        "storage": "text",
+        "extension": ".txt"
+      },
+      "artifact_hash": {
+        "description": "Hash record proving immutability of another artifact.",
+        "format": "structured_json",
+        "storage": "text",
+        "extension": ".json"
+      },
+      "visual_diff": {
+        "description": "Visual comparison between expected and actual screenshots.",
+        "format": "png",
+        "storage": "binary",
+        "extension": ".png"
+      },
+      "verification_report": {
+        "description": "Evidence produced by verifier plugins during execution.",
+        "format": "structured_json",
+        "storage": "text",
+        "extension": ".json"
+      }
+    }
+  },
+
+  "evidence_id_generation": {
+    "description": "How evidence IDs are generated to ensure uniqueness and traceability.",
+    "format": "ev-<correlation_id_short>-<sequence>-<type_short>",
+    "components": {
+      "prefix": "ev",
+      "correlation_id_short": "First 8 characters of the workflow correlation_id.",
+      "sequence": "Zero-padded 4-digit sequence number within the workflow. Monotonically increasing.",
+      "type_short": "Abbreviated evidence type (diff, tlog, clog, atrc, scrn, rrpt, sref, flog, trns, ahsh, vdif, vrpt)."
+    },
+    "example": "ev-a1b2c3d4-0001-diff",
+    "uniqueness_guarantee": "Combination of correlation_id_short + sequence is unique within a workflow. Full evidence_id is globally unique when combined with workflow context.",
+    "collision_handling": "If collision detected, increment sequence. Registry rejects duplicate evidence_ids."
+  },
+
+  "canonical_path_format": {
+    "description": "Deterministic file path for evidence storage.",
+    "pattern": "evidence/<correlation_id>/<evidence_id><extension>",
+    "components": {
+      "root": "evidence/",
+      "correlation_id": "Full UUID of the workflow correlation_id.",
+      "evidence_id": "The generated evidence ID.",
+      "extension": "File extension based on evidence type."
+    },
+    "example": "evidence/a1b2c3d4-e5f6-7890-abcd-ef1234567890/ev-a1b2c3d4-0001-diff.diff",
+    "rules": [
+      "All evidence for a workflow is co-located under the correlation_id directory.",
+      "Path components use lowercase only.",
+      "No special characters except hyphens and dots.",
+      "Paths are relative to the evidence storage root."
+    ]
+  },
+
+  "hash_points": {
+    "description": "When and how evidence is hashed to prove integrity.",
+    "algorithm": "SHA-256",
+    "encoding": "hex-lowercase",
+    "hash_points": [
+      {
+        "id": "HP-001",
+        "when": "Evidence artifact is first persisted to the registry.",
+        "what": "Full content of the evidence file.",
+        "stored_in": "EvidenceRecord.content_hash"
+      },
+      {
+        "id": "HP-002",
+        "when": "Evidence is referenced by a VerificationArtifact.",
+        "what": "Re-hash the evidence content and compare to stored hash.",
+        "action_on_mismatch": "Set criteria status to blocked. Evidence tampered or corrupted."
+      },
+      {
+        "id": "HP-003",
+        "when": "VerificationArtifact is finalized.",
+        "what": "Hash the entire VerificationArtifact (excluding artifact_hash field).",
+        "stored_in": "VerificationArtifact.artifact_hash"
+      }
+    ]
+  },
+
+  "evidence_record": {
+    "description": "Metadata record stored in the registry for each piece of evidence.",
+    "required_fields": [
+      {
+        "field": "evidence_id",
+        "type": "string",
+        "description": "Unique evidence identifier."
+      },
+      {
+        "field": "correlation_id",
+        "type": "uuid",
+        "description": "Workflow correlation ID."
+      },
+      {
+        "field": "evidence_type",
+        "type": "string",
+        "description": "One of the recognized evidence types."
+      },
+      {
+        "field": "path",
+        "type": "string",
+        "description": "Canonical storage path."
+      },
+      {
+        "field": "content_hash",
+        "type": "string",
+        "description": "SHA-256 hash of the evidence content at time of registration."
+      },
+      {
+        "field": "produced_by",
+        "type": "string",
+        "description": "Role or plugin that produced this evidence."
+      },
+      {
+        "field": "produced_at",
+        "type": "date-time",
+        "description": "Timestamp of evidence production."
+      },
+      {
+        "field": "size_bytes",
+        "type": "number",
+        "description": "Size of the evidence file in bytes."
+      }
+    ],
+    "optional_fields": [
+      {
+        "field": "criteria_ids",
+        "type": "array",
+        "description": "Criteria this evidence is associated with."
+      },
+      {
+        "field": "step_id",
+        "type": "string",
+        "description": "Build step that produced this evidence."
+      },
+      {
+        "field": "expires_at",
+        "type": "date-time",
+        "description": "Expiration timestamp for time-sensitive evidence."
+      }
+    ]
+  },
+
+  "lookup_protocol": {
+    "description": "How the engine and plugins resolve evidence IDs to actual content.",
+    "operations": [
+      {
+        "operation": "resolve",
+        "input": "evidence_id",
+        "output": "EvidenceRecord (metadata) + content_path",
+        "on_not_found": "Return null. Engine sets criteria to blocked."
+      },
+      {
+        "operation": "resolve_batch",
+        "input": "array of evidence_ids",
+        "output": "array of EvidenceRecords",
+        "on_partial_failure": "Return found records + list of missing IDs."
+      },
+      {
+        "operation": "verify_integrity",
+        "input": "evidence_id",
+        "output": "boolean (hash match)",
+        "action": "Re-hash content and compare to stored content_hash."
+      },
+      {
+        "operation": "register",
+        "input": "evidence content + metadata",
+        "output": "EvidenceRecord with generated evidence_id",
+        "constraints": "Only Builder role and verifier plugins may register evidence."
+      },
+      {
+        "operation": "list_by_correlation",
+        "input": "correlation_id",
+        "output": "All EvidenceRecords for the workflow.",
+        "use_case": "Audit and verification artifact production."
+      }
+    ]
+  },
+
+  "retention_policy": {
+    "description": "Rules for evidence lifecycle and cleanup.",
+    "rules": [
+      {
+        "id": "RP-001",
+        "rule": "Evidence for completed workflows is retained for the retention_period.",
+        "retention_period": "90 days",
+        "after_expiry": "Evidence may be archived or deleted."
+      },
+      {
+        "id": "RP-002",
+        "rule": "Evidence for active workflows is never deleted.",
+        "enforced_by": "registry"
+      },
+      {
+        "id": "RP-003",
+        "rule": "Evidence referenced by a VerificationArtifact cannot be deleted while the artifact exists.",
+        "enforced_by": "registry"
+      },
+      {
+        "id": "RP-004",
+        "rule": "Binary evidence (screenshots) may be compressed after workflow completion.",
+        "constraint": "Compressed content must hash-match the original (compression is lossless or original hash is preserved in metadata)."
+      }
+    ]
+  },
+
+  "immutability_rules": [
+    {
+      "id": "IM-001",
+      "rule": "Once registered, evidence content cannot be modified. Any modification attempt is rejected.",
+      "enforced_by": "registry"
+    },
+    {
+      "id": "IM-002",
+      "rule": "Evidence metadata (EvidenceRecord) is append-only. Fields cannot be removed or changed after registration.",
+      "enforced_by": "registry"
+    },
+    {
+      "id": "IM-003",
+      "rule": "evidence_id is permanently bound to its content_hash. Re-registration with a different hash is rejected.",
+      "enforced_by": "registry"
+    }
+  ],
+
+  "registry_invariants": [
+    {
+      "id": "RI-001",
+      "rule": "Every evidence_id in any BuildReport.evidence_map must resolve in the registry.",
+      "enforced_by": "engine (step 3)"
+    },
+    {
+      "id": "RI-002",
+      "rule": "Every evidence_id in any VerificationArtifact.criteria_results must resolve in the registry.",
+      "enforced_by": "engine (step 10)"
+    },
+    {
+      "id": "RI-003",
+      "rule": "The registry is the single source of truth for evidence. No out-of-band evidence references are valid.",
+      "enforced_by": "runtime_guard"
+    },
+    {
+      "id": "RI-004",
+      "rule": "Evidence types in the registry must be a superset of required_evidence_types from workflow_taxonomy.",
+      "enforced_by": "validator"
+    }
+  ]
+}
