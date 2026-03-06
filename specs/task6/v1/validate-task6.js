@@ -28,6 +28,8 @@ function gateS61Presence() {
     'escalation-ui-contract.schema.json',
     'autonomy-modes-policy.schema.json',
     'status-view-contract.schema.json',
+    'security-retention-redaction-policy.json',
+    'security-retention-redaction-policy.schema.json',
     'validate-task6.js'
   ];
   for (const name of required) {
@@ -146,6 +148,32 @@ function gateS64StatusViewSchema() {
   }
 }
 
+function gateS67RetentionRedactionPolicy() {
+  const schema = loadJson(path.join(TASK6_DIR, 'security-retention-redaction-policy.schema.json'));
+  const doc = loadJson(path.join(TASK6_DIR, 'security-retention-redaction-policy.json'));
+  const validate = createValidator(schema);
+  if (!validate(doc)) {
+    for (const err of validate.errors || []) {
+      errors.push(`S6-7 security-retention-redaction-policy invalid at ${err.instancePath || '/'}: ${err.message}`);
+    }
+  }
+
+  // audit_log_scope must be immutable and append-only
+  if (doc.audit_log_scope) {
+    if (doc.audit_log_scope.immutable !== true) {
+      errors.push('S6-7 audit_log_scope.immutable must be true');
+    }
+    if (doc.audit_log_scope.append_only !== true) {
+      errors.push('S6-7 audit_log_scope.append_only must be true');
+    }
+  }
+
+  // retention_days must match between top-level and audit_log_scope
+  if (doc.retention_days !== doc.audit_log_scope?.retention_days) {
+    errors.push('S6-7 retention_days mismatch between top-level and audit_log_scope');
+  }
+}
+
 function gateS65CiFailClosed() {
   // This validator itself is the CI contract: any error must return non-zero.
   if (errors.length > 0) {
@@ -166,6 +194,7 @@ function main() {
     gateS63AutonomySchema();
     gateS64CrossConsistency();
     gateS64StatusViewSchema();
+    gateS67RetentionRedactionPolicy();
     gateS65CiFailClosed();
   }
 
@@ -181,6 +210,7 @@ function main() {
   console.log('- S6-3: autonomy policy schema gate');
   console.log('- S6-4: status-view-contract schema gate');
   console.log('- S6-5: cross-contract consistency gate');
+  console.log('- S6-7: security retention/redaction policy gate');
   console.log('- S6-6: CI fail-closed gate');
 }
 

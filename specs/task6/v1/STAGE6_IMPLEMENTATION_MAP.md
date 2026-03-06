@@ -36,6 +36,10 @@ Scope: add reviewer-facing auditability surfaces and policy controls on top of S
 - `S6-5` Cross-Contract Consistency Gate
   - Required autonomy modes exist and gate behavior is explicit.
   - Escalation response actions align with autonomy policy escalation actions.
+- `S6-7` Security Retention/Redaction Policy Gate
+  - `security-retention-redaction-policy.json` validates against schema.
+  - Audit log scope must be immutable and append-only.
+  - Retention days must be consistent across top-level and audit_log_scope.
 - `S6-6` CI Fail-Closed Gate
   - Validator exits non-zero on any Stage 6 error.
 
