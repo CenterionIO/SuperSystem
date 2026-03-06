@@ -212,6 +212,12 @@ function gateS67RetentionRedactionPolicy() {
     }
   }
 
+  // redaction_levels must be exactly [none, standard, strict] in order
+  const rl = doc.redaction_levels;
+  if (!Array.isArray(rl) || JSON.stringify(rl) !== JSON.stringify(['none', 'standard', 'strict'])) {
+    errors.push('S6-5 redaction_levels must equal ["none","standard","strict"] in order');
+  }
+
   // secrets_field_patterns must be a subset of exclude_fields
   const excludeSet = new Set(doc.audit_log_scope?.exclude_fields || []);
   for (const pat of doc.secrets_field_patterns || []) {
