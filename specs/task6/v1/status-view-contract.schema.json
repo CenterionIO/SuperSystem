@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StatusViewContract",
+  "description": "Schema for the reviewer-facing status payload. Defines the required shape of any status view emitted by the runtime.",
+  "type": "object",
+  "required": ["correlation_id", "workflow_class", "autonomy_mode", "current_state", "last_transition_at", "blocked_reason", "next_action"],
+  "properties": {
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "workflow_class": {
+      "type": "string",
+      "enum": ["code_change", "mcp_tool", "research_only", "transcription", "ui_change", "ops_fix"]
+    },
+    "autonomy_mode": {
+      "type": "string",
+      "enum": ["approve_each", "approve_final", "full_auto"]
+    },
+    "current_state": {
+      "type": "string"
+    },
+    "last_transition_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "blocked_reason": {
+      "type": ["string", "null"]
+    },
+    "next_action": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

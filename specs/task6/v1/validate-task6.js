@@ -27,6 +27,7 @@ function gateS61Presence() {
     'autonomy-modes-policy.json',
     'escalation-ui-contract.schema.json',
     'autonomy-modes-policy.schema.json',
+    'status-view-contract.schema.json',
     'validate-task6.js'
   ];
   for (const name of required) {
@@ -88,6 +89,63 @@ function gateS64CrossConsistency() {
   }
 }
 
+function gateS64StatusViewSchema() {
+  const schema = loadJson(path.join(TASK6_DIR, 'status-view-contract.schema.json'));
+
+  // Required fields must be declared
+  const reqFields = ['correlation_id', 'workflow_class', 'autonomy_mode', 'current_state', 'last_transition_at', 'blocked_reason', 'next_action'];
+  for (const f of reqFields) {
+    if (!schema.required || !schema.required.includes(f)) {
+      errors.push(`S6-4b status-view-contract.schema.json missing required field: ${f}`);
+    }
+    if (!schema.properties || !schema.properties[f]) {
+      errors.push(`S6-4b status-view-contract.schema.json missing property definition: ${f}`);
+    }
+  }
+
+  // blocked_reason must accept null
+  if (schema.properties && schema.properties.blocked_reason) {
+    const br = schema.properties.blocked_reason;
+    const types = Array.isArray(br.type) ? br.type : [br.type];
+    if (!types.includes('null')) {
+      errors.push('S6-4b blocked_reason must accept null');
+    }
+  }
+
+  // Validate a sample payload compiles and passes
+  const validate = createValidator(schema);
+  const sample = {
+    correlation_id: '00000000-0000-0000-0000-000000000000',
+    workflow_class: 'code_change',
+    autonomy_mode: 'approve_final',
+    current_state: 'building',
+    last_transition_at: '2026-01-01T00:00:00.000Z',
+    blocked_reason: null,
+    next_action: 'await build completion'
+  };
+  if (!validate(sample)) {
+    for (const err of validate.errors || []) {
+      errors.push(`S6-4b sample payload failed: ${err.instancePath || '/'}: ${err.message}`);
+    }
+  }
+
+  // Validate blocked payload
+  const blockedSample = {
+    correlation_id: '00000000-0000-0000-0000-000000000001',
+    workflow_class: 'ops_fix',
+    autonomy_mode: 'approve_each',
+    current_state: 'escalation',
+    last_transition_at: '2026-01-01T00:00:00.000Z',
+    blocked_reason: 'Retry cap exceeded',
+    next_action: 'reviewer must approve or reject'
+  };
+  if (!validate(blockedSample)) {
+    for (const err of validate.errors || []) {
+      errors.push(`S6-4b blocked sample failed: ${err.instancePath || '/'}: ${err.message}`);
+    }
+  }
+}
+
 function gateS65CiFailClosed() {
   // This validator itself is the CI contract: any error must return non-zero.
   if (errors.length > 0) {
@@ -107,6 +165,7 @@ function main() {
     gateS62EscalationSchema();
     gateS63AutonomySchema();
     gateS64CrossConsistency();
+    gateS64StatusViewSchema();
     gateS65CiFailClosed();
   }
 
@@ -121,6 +180,7 @@ function main() {
   console.log('- S6-2: escalation contract schema gate');
   console.log('- S6-3: autonomy policy schema gate');
   console.log('- S6-4: cross-contract consistency gate');
+  console.log('- S6-4b: status-view-contract schema gate');
   console.log('- S6-5: CI fail-closed gate');
 }
 
