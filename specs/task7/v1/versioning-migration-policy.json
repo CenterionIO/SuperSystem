@@ -1,0 +1,20 @@
+{
+  "version": "v1",
+  "semver_policy": {
+    "format": "major.minor.patch",
+    "breaking_change_triggers": ["schema_field_removal", "required_field_addition", "enum_value_removal"],
+    "minor_change_triggers": ["optional_field_addition", "enum_value_addition"],
+    "patch_change_triggers": ["description_update", "default_value_change"]
+  },
+  "backward_compat_window": {
+    "duration_days": 90,
+    "strategy": "dual_write",
+    "deprecation_notice_required": true
+  },
+  "migration_strategy": {
+    "approach": "versioned_directories",
+    "rollback_supported": true,
+    "data_migration_required": false,
+    "validation_before_cutover": true
+  }
+}

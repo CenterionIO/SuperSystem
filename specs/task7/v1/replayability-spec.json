@@ -1,0 +1,25 @@
+{
+  "version": "v1",
+  "required_artifacts": [
+    "trace.jsonl",
+    "evidence_records.json",
+    "VerificationArtifact.json",
+    "proof.json",
+    "manifest.json",
+    "run_state.json"
+  ],
+  "replay_inputs": {
+    "correlation_id": "required",
+    "workflow_class": "required",
+    "golden_path_definition": "required",
+    "autonomy_mode": "required",
+    "initial_context": "optional"
+  },
+  "determinism_requirements": {
+    "state_transitions": "deterministic",
+    "evidence_ids": "deterministic_from_content",
+    "hash_algorithm": "sha256",
+    "timestamp_handling": "capture_not_replay",
+    "random_seed": "not_used"
+  }
+}

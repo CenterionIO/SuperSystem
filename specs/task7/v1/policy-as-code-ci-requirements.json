@@ -1,0 +1,21 @@
+{
+  "version": "v1",
+  "required_workflows": [
+    "validate:all",
+    "validate:task7",
+    "golden:all",
+    "test:proof"
+  ],
+  "required_commands": [
+    "node specs/task1/v1/validate-task1.js",
+    "node specs/task7/v1/validate-task7.js",
+    "node tools/test-proof-export.js"
+  ],
+  "fail_conditions": {
+    "any_validator_nonzero": true,
+    "missing_proof_json": true,
+    "missing_manifest_json": true,
+    "schema_validation_failure": true,
+    "golden_path_divergence": true
+  }
+}

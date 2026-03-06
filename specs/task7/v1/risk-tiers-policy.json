@@ -1,0 +1,34 @@
+{
+  "version": "v1",
+  "tiers": {
+    "low": {
+      "description": "Read-only operations, research, transcription",
+      "workflow_classes": ["research_only", "transcription"],
+      "max_autonomy": "full_auto"
+    },
+    "med": {
+      "description": "Code changes, UI changes with bounded blast radius",
+      "workflow_classes": ["code_change", "ui_change", "mcp_tool"],
+      "max_autonomy": "approve_final"
+    },
+    "high": {
+      "description": "Infrastructure, ops fixes, production-affecting changes",
+      "workflow_classes": ["ops_fix"],
+      "max_autonomy": "approve_each"
+    }
+  },
+  "tier_rules": {
+    "low": {
+      "autonomy": "full_auto",
+      "required_gates": ["build_review"]
+    },
+    "med": {
+      "autonomy": "approve_final",
+      "required_gates": ["plan_review", "build_review"]
+    },
+    "high": {
+      "autonomy": "approve_each",
+      "required_gates": ["research_review", "plan_review", "build_review"]
+    }
+  }
+}

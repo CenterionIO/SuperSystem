@@ -12,6 +12,7 @@
     "validate:task3": "node specs/task3/v1/validate-task3.js",
     "validate:task4": "node specs/task4/v1/validate-task4.js",
     "validate:task5": "node specs/task5/v1/validate-task5.js",
+    "validate:task7": "node specs/task7/v1/validate-task7.js",
     "validate:all": "npm run validate:task1 && npm run validate:stage2 && npm run validate:task3 && npm run validate:task4 && npm run validate:task5",
     "golden:code_change": "node runtime/cli.js golden code_change",
     "golden:mcp_tool": "node runtime/cli.js golden mcp_tool",
