@@ -1,0 +1,46 @@
+{
+  "title": "Runtime Configuration",
+  "version": "1.0.0",
+
+  "spec_paths": {
+    "state_machine": "specs/task1/v1/runtime-state-machine-v1.json",
+    "role_authority_matrix": "specs/task1/v1/role-authority-matrix.json",
+    "verify_contract": "specs/task1/v1/VerifyMCP-contract.json",
+    "schemas": "specs/task1/v1/schemas",
+    "ownership": "specs/task1/v1/ownership",
+    "examples": "specs/task1/v1/examples",
+    "loop_control": "specs/task3/v1/loop-control-config.json",
+    "gate_sequence": "specs/task3/v1/gate-sequence.json",
+    "enforcement_adapter": "specs/task3/v1/enforcement-adapter.json",
+    "error_runbook": "specs/task3/v1/error-lane-runbook.json",
+    "runtime_modes": "specs/task3/v1/runtime-modes.json",
+    "verify_engine": "specs/task4/v1/verify-mcp-engine.json",
+    "plugin_abi": "specs/task4/v1/verifier-plugin-abi.json",
+    "evidence_registry": "specs/task4/v1/evidence-registry.json",
+    "golden_paths": "specs/task5/v1"
+  },
+
+  "policy_paths": {
+    "workflow_taxonomy": "policy/v1/workflow_taxonomy.json",
+    "routing_policy": "policy/v1/routing_policy.json",
+    "permissions_policy": "policy/v1/permissions_policy.json",
+    "override_policy": "policy/v1/override_policy.json"
+  },
+
+  "output_dir": "out",
+  "evidence_dir": "out/evidence",
+
+  "plugins": {
+    "planner": "stub",
+    "builder": "stub",
+    "research": "stub",
+    "verify": "local"
+  },
+
+  "timeouts": {
+    "plugin_default_ms": 30000,
+    "plugin_max_ms": 120000,
+    "heartbeat_interval_seconds": 30,
+    "stall_threshold_missed_beats": 3
+  }
+}

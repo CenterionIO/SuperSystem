@@ -1,13 +1,22 @@
 {
   "name": "supersystem",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "example": "examples"
+  "description": "Multi-agent orchestration system with governance, verification, and policy enforcement.",
+  "main": "runtime/runner.js",
+  "bin": {
+    "supersystem": "runtime/runner.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "validate:task1": "node specs/task1/v1/validate-task1.js",
+    "validate:stage2": "node tools/validate-stage2.js",
+    "validate:task3": "node specs/task3/v1/validate-task3.js",
+    "validate:task4": "node specs/task4/v1/validate-task4.js",
+    "validate:task5": "node specs/task5/v1/validate-task5.js",
+    "validate:all": "npm run validate:task1 && npm run validate:stage2 && npm run validate:task3 && npm run validate:task4 && npm run validate:task5",
+    "golden:code_change": "node runtime/runner.js golden code_change",
+    "golden:mcp_tool": "node runtime/runner.js golden mcp_tool",
+    "golden:all": "npm run golden:code_change && npm run golden:mcp_tool",
+    "test": "npm run validate:all && npm run golden:all"
   },
   "keywords": [],
   "author": "",
