@@ -17,21 +17,25 @@ const SCHEMA_EXAMPLE_PAIRS = [
     name: "ResearchReport",
     schema: "schemas/v1/ResearchReport.json",
     example: "examples/v1/ResearchReport-example.json",
+    ownership: "ownership/v1/ResearchReport.ownership.json",
   },
   {
     name: "ExecutionPlan",
     schema: "schemas/v1/ExecutionPlan.json",
     example: "examples/v1/ExecutionPlan-example.json",
+    ownership: "ownership/v1/ExecutionPlan.ownership.json",
   },
   {
     name: "BuildReport",
     schema: "schemas/v1/BuildReport.json",
     example: "examples/v1/BuildReport-example.json",
+    ownership: "ownership/v1/BuildReport.ownership.json",
   },
   {
     name: "VerificationArtifact",
     schema: "schemas/v1/VerificationArtifact.json",
     example: "examples/v1/VerificationArtifact-example.json",
+    ownership: "ownership/v1/VerificationArtifact.ownership.json",
   },
 ];
 
@@ -154,7 +158,8 @@ function runGateB() {
 
   for (const pair of SCHEMA_EXAMPLE_PAIRS) {
     const rawSchema = loadJSON(pair.schema);
-    const ownership = rawSchema.fieldOwnership || {};
+    const ownershipFile = loadJSON(pair.ownership);
+    const ownership = ownershipFile.fieldOwnership || {};
     const ownershipPaths = new Set(Object.keys(ownership));
 
     const schemaPaths = collectSchemaLeafPaths(rawSchema);
@@ -224,10 +229,14 @@ function runGateB() {
     console.log(`  ${b5Pass ? "PASS" : "FAIL"}  ${pair.name}: echoedBy/writtenBy exclusivity`);
   }
 
-  // Also check the Orchestrator-Planner interface ownership
-  const iface = loadJSON(INTERFACE_PATH);
+  // Also check the Orchestrator-Planner interface ownership (now in standalone files)
+  const INTERFACE_OWNERSHIP = {
+    PlanningRequest: "ownership/v1/PlanningRequest.ownership.json",
+    PlanningResponse: "ownership/v1/PlanningResponse.ownership.json",
+  };
   for (const section of ["PlanningRequest", "PlanningResponse"]) {
-    const ownership = iface[section]?.fieldOwnership || {};
+    const ownershipFile = loadJSON(INTERFACE_OWNERSHIP[section]);
+    const ownership = ownershipFile.fieldOwnership || {};
     const hasOwnership = Object.keys(ownership).length > 0;
     record("B", `${section}: has fieldOwnership`, hasOwnership, "");
     console.log(`  ${hasOwnership ? "PASS" : "FAIL"}  ${section}: has fieldOwnership (${Object.keys(ownership).length} entries)`);
@@ -263,8 +272,8 @@ function runGateC() {
   let cPassed = true;
 
   for (const pair of SCHEMA_EXAMPLE_PAIRS) {
-    const rawSchema = loadJSON(pair.schema);
-    const ownership = rawSchema.fieldOwnership || {};
+    const ownershipFile = loadJSON(pair.ownership);
+    const ownership = ownershipFile.fieldOwnership || {};
 
     for (const [fpath, meta] of Object.entries(ownership)) {
       const fieldName = fpath.split("/").filter(Boolean).pop().replace("[]", "");
@@ -294,7 +303,8 @@ function runGateC() {
 
   // C.3: PlanningRequest fields all written by Orchestrator
   const iface = loadJSON(INTERFACE_PATH);
-  const reqOwnership = iface.PlanningRequest?.fieldOwnership || {};
+  const reqOwnershipFile = loadJSON("ownership/v1/PlanningRequest.ownership.json");
+  const reqOwnership = reqOwnershipFile.fieldOwnership || {};
   for (const [fpath, meta] of Object.entries(reqOwnership)) {
     if (!meta.writtenBy.includes("Orchestrator")) {
       record("C", `PlanningRequest${fpath}: not written by Orchestrator`, false,
@@ -305,7 +315,8 @@ function runGateC() {
   }
 
   // C.4: PlanningResponse plan content fields written by Planner
-  const respOwnership = iface.PlanningResponse?.fieldOwnership || {};
+  const respOwnershipFile = loadJSON("ownership/v1/PlanningResponse.ownership.json");
+  const respOwnership = respOwnershipFile.fieldOwnership || {};
   for (const [fpath, meta] of Object.entries(respOwnership)) {
     const fieldName = fpath.split("/").filter(Boolean).pop();
     if (["execution_plan", "execution_plan_id", "status", "plan_blocker_detail"].includes(fieldName)) {

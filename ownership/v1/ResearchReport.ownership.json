@@ -1,0 +1,31 @@
+{
+  "schema": "ResearchReport",
+  "version": "v1",
+  "path_format": "json-pointer-with-array-wildcard",
+  "deny_by_default": true,
+  "fieldOwnership": {
+    "/research_report_id":                          { "writtenBy": ["Research"],      "readableBy": ["*"],                "verifiedBy": ["VerifyMCP"] },
+    "/correlation_id":                              { "writtenBy": ["Orchestrator"],  "readableBy": ["*"],                "verifiedBy": ["VerifyMCP"], "echoedBy": [] },
+    "/workflow_class":                              { "writtenBy": ["Orchestrator"],  "readableBy": ["*"],                "verifiedBy": ["VerifyMCP"] },
+    "/created_at":                                  { "writtenBy": ["Research"],      "readableBy": ["*"],                "verifiedBy": ["VerifyMCP"] },
+    "/findings":                                    { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]":                                 { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]/finding_id":                      { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]/claim":                           { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]/confidence":                      { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]/sources":                         { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]/sources/[]":                      { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]/freshness_checked_at":            { "writtenBy": ["Research"],      "readableBy": ["VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/confidence":                                  { "writtenBy": ["Research"],      "readableBy": ["Planner", "Orchestrator", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/freshness":                                   { "writtenBy": ["Research"],      "readableBy": ["VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/freshness/policy_applied":                    { "writtenBy": ["Research"],      "readableBy": ["VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/freshness/all_time_sensitive_checked":         { "writtenBy": ["Research"],      "readableBy": ["VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/sources":                                     { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/sources/[]":                                  { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/gaps":                                        { "writtenBy": ["Research"],      "readableBy": ["Planner", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/gaps/[]":                                     { "writtenBy": ["Research"],      "readableBy": ["Planner", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/gaps/[]/gap_id":                              { "writtenBy": ["Research"],      "readableBy": ["Planner", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/gaps/[]/description":                         { "writtenBy": ["Research"],      "readableBy": ["Planner", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/gaps/[]/impact":                              { "writtenBy": ["Research"],      "readableBy": ["Planner", "Orchestrator"], "verifiedBy": ["VerifyMCP"] }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "PlanningRequest",
+  "version": "v1",
+  "path_format": "json-pointer-with-array-wildcard",
+  "deny_by_default": true,
+  "fieldOwnership": {
+    "/correlation_id":                  { "writtenBy": ["Orchestrator"], "readableBy": ["*"],       "verifiedBy": ["VerifyMCP"] },
+    "/workflow_class":                  { "writtenBy": ["Orchestrator"], "readableBy": ["*"],       "verifiedBy": ["VerifyMCP"] },
+    "/autonomy_mode":                   { "writtenBy": ["Orchestrator"], "readableBy": ["*"],       "verifiedBy": ["VerifyMCP"] },
+    "/research_report_id":              { "writtenBy": ["Orchestrator"], "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/request_summary":                 { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
+    "/constraints":                     { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
+    "/constraints/max_plan_steps":      { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
+    "/constraints/allowed_paths":       { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
+    "/constraints/allowed_paths/[]":    { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
+    "/constraints/allowed_tools":       { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
+    "/constraints/allowed_tools/[]":    { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
+    "/constraints/denied_tools":        { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
+    "/constraints/denied_tools/[]":     { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] }
+  }
+}

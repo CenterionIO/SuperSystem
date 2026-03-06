@@ -54,21 +54,6 @@
           }
         }
       }
-    },
-    "fieldOwnership": {
-      "/correlation_id":                  { "writtenBy": ["Orchestrator"], "readableBy": ["*"],       "verifiedBy": ["VerifyMCP"] },
-      "/workflow_class":                  { "writtenBy": ["Orchestrator"], "readableBy": ["*"],       "verifiedBy": ["VerifyMCP"] },
-      "/autonomy_mode":                   { "writtenBy": ["Orchestrator"], "readableBy": ["*"],       "verifiedBy": ["VerifyMCP"] },
-      "/research_report_id":              { "writtenBy": ["Orchestrator"], "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
-      "/request_summary":                 { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
-      "/constraints":                     { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
-      "/constraints/max_plan_steps":      { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
-      "/constraints/allowed_paths":       { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
-      "/constraints/allowed_paths/[]":    { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
-      "/constraints/allowed_tools":       { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
-      "/constraints/allowed_tools/[]":    { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
-      "/constraints/denied_tools":        { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] },
-      "/constraints/denied_tools/[]":     { "writtenBy": ["Orchestrator"], "readableBy": ["Planner"], "verifiedBy": ["VerifyMCP"] }
     }
   },
 
@@ -100,13 +85,6 @@
         "$ref": "schemas/v1/ExecutionPlan.json",
         "description": "The authored plan. Null only when status is needs_research."
       }
-    },
-    "fieldOwnership": {
-      "/correlation_id":        { "writtenBy": ["Orchestrator"], "readableBy": ["Orchestrator", "VerifyMCP"], "verifiedBy": ["VerifyMCP"], "echoedBy": ["Planner"] },
-      "/execution_plan_id":     { "writtenBy": ["Planner"],      "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"] },
-      "/status":                { "writtenBy": ["Planner"],      "readableBy": ["Orchestrator"],              "verifiedBy": ["VerifyMCP"] },
-      "/plan_blocker_detail":   { "writtenBy": ["Planner"],      "readableBy": ["Orchestrator", "Planner"],   "verifiedBy": ["VerifyMCP"] },
-      "/execution_plan":        { "writtenBy": ["Planner"],      "readableBy": ["Orchestrator", "Builder", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] }
     }
   },
 

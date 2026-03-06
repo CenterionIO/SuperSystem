@@ -110,36 +110,5 @@
         }
       }
     }
-  },
-
-  "fieldOwnership": {
-    "/execution_plan_id":                               { "writtenBy": ["Planner"],      "readableBy": ["*"],                           "verifiedBy": ["VerifyMCP"] },
-    "/correlation_id":                                  { "writtenBy": ["Orchestrator"], "readableBy": ["*"],                           "verifiedBy": ["VerifyMCP"], "echoedBy": ["Planner"] },
-    "/workflow_class":                                  { "writtenBy": ["Orchestrator"], "readableBy": ["*"],                           "verifiedBy": ["VerifyMCP"], "echoedBy": ["Planner"] },
-    "/version":                                         { "writtenBy": ["Planner"],      "readableBy": ["*"],                           "verifiedBy": ["VerifyMCP"] },
-    "/created_at":                                      { "writtenBy": ["Planner"],      "readableBy": ["*"],                           "verifiedBy": ["VerifyMCP"] },
-    "/research_report_id":                              { "writtenBy": ["Orchestrator"], "readableBy": ["Planner", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"], "echoedBy": ["Planner"] },
-    "/steps":                                           { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
-    "/steps/[]":                                        { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
-    "/steps/[]/step_id":                                { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
-    "/steps/[]/order":                                  { "writtenBy": ["Planner"],      "readableBy": ["Builder", "Orchestrator"],     "verifiedBy": ["VerifyMCP"] },
-    "/steps/[]/action":                                 { "writtenBy": ["Planner"],      "readableBy": ["Builder"],                     "verifiedBy": ["VerifyMCP"] },
-    "/steps/[]/description":                            { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
-    "/steps/[]/criteria_ids":                           { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
-    "/steps/[]/criteria_ids/[]":                        { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
-    "/steps/[]/tools_required":                         { "writtenBy": ["Planner"],      "readableBy": ["Builder", "Orchestrator"],     "verifiedBy": ["VerifyMCP"] },
-    "/steps/[]/tools_required/[]":                      { "writtenBy": ["Planner"],      "readableBy": ["Builder", "Orchestrator"],     "verifiedBy": ["VerifyMCP"] },
-    "/steps/[]/paths_affected":                         { "writtenBy": ["Planner"],      "readableBy": ["Builder", "Orchestrator"],     "verifiedBy": ["VerifyMCP"] },
-    "/steps/[]/paths_affected/[]":                      { "writtenBy": ["Planner"],      "readableBy": ["Builder", "Orchestrator"],     "verifiedBy": ["VerifyMCP"] },
-    "/steps/[]/verification_type":                      { "writtenBy": ["Planner"],      "readableBy": ["VerifyMCP"],                   "verifiedBy": ["VerifyMCP"] },
-    "/acceptance_criteria":                             { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
-    "/acceptance_criteria/[]":                          { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
-    "/acceptance_criteria/[]/criteria_id":              { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
-    "/acceptance_criteria/[]/description":              { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
-    "/acceptance_criteria/[]/required":                 { "writtenBy": ["Planner"],      "readableBy": ["VerifyMCP"],                   "verifiedBy": ["VerifyMCP"] },
-    "/verification_requirements":                       { "writtenBy": ["Planner"],      "readableBy": ["VerifyMCP", "Orchestrator"],   "verifiedBy": ["VerifyMCP"] },
-    "/verification_requirements/minimum_ladder":        { "writtenBy": ["Planner"],      "readableBy": ["VerifyMCP"],                   "verifiedBy": ["VerifyMCP"] },
-    "/verification_requirements/minimum_ladder/[]":     { "writtenBy": ["Planner"],      "readableBy": ["VerifyMCP"],                   "verifiedBy": ["VerifyMCP"] },
-    "/verification_requirements/freshness_required":    { "writtenBy": ["Planner"],      "readableBy": ["VerifyMCP"],                   "verifiedBy": ["VerifyMCP"] }
   }
 }

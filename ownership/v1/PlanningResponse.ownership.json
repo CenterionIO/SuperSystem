@@ -1,0 +1,13 @@
+{
+  "schema": "PlanningResponse",
+  "version": "v1",
+  "path_format": "json-pointer-with-array-wildcard",
+  "deny_by_default": true,
+  "fieldOwnership": {
+    "/correlation_id":        { "writtenBy": ["Orchestrator"], "readableBy": ["Orchestrator", "VerifyMCP"], "verifiedBy": ["VerifyMCP"], "echoedBy": ["Planner"] },
+    "/execution_plan_id":     { "writtenBy": ["Planner"],      "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"] },
+    "/status":                { "writtenBy": ["Planner"],      "readableBy": ["Orchestrator"],              "verifiedBy": ["VerifyMCP"] },
+    "/plan_blocker_detail":   { "writtenBy": ["Planner"],      "readableBy": ["Orchestrator", "Planner"],   "verifiedBy": ["VerifyMCP"] },
+    "/execution_plan":        { "writtenBy": ["Planner"],      "readableBy": ["Orchestrator", "Builder", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] }
+  }
+}
