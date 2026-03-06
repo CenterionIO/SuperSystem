@@ -20,6 +20,25 @@ function requireFields(label, obj, fields) {
   }
 }
 
+function requireExactKeys(label, obj, keys) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+    errors.push(`${label} must be an object`);
+    return;
+  }
+  const allowed = new Set(keys);
+  const present = Object.keys(obj);
+  for (const key of keys) {
+    if (!(key in obj)) {
+      errors.push(`${label} missing required field: ${key}`);
+    }
+  }
+  for (const key of present) {
+    if (!allowed.has(key)) {
+      errors.push(`${label} has unexpected field: ${key}`);
+    }
+  }
+}
+
 function gateS81Presence() {
   const required = [
     'STAGE8_IMPLEMENTATION_MAP.md',
@@ -38,22 +57,40 @@ function gateS81Presence() {
 
 function gateS82VersioningMigration() {
   const doc = loadJson(path.join(TASK7_DIR, 'versioning-migration-policy.json'));
-  requireFields('S8-2', doc, ['version', 'semver_policy', 'backward_compat_window', 'migration_strategy']);
+  requireExactKeys('S8-2', doc, ['version', 'semver_policy', 'backward_compat_window', 'migration_strategy']);
+  if (typeof doc.version !== 'string' || doc.version.length === 0) {
+    errors.push('S8-2 version must be a non-empty string');
+  }
 
   // semver_policy deep checks
   const sp = doc.semver_policy || {};
+  requireExactKeys('S8-2 semver_policy', sp, [
+    'format',
+    'breaking_change_triggers',
+    'minor_change_triggers',
+    'patch_change_triggers',
+  ]);
   if (sp.format !== 'major.minor.patch') {
     errors.push('S8-2 semver_policy.format must be "major.minor.patch"');
   }
   for (const key of ['breaking_change_triggers', 'minor_change_triggers', 'patch_change_triggers']) {
     if (!Array.isArray(sp[key]) || sp[key].length === 0) {
       errors.push(`S8-2 semver_policy.${key} must be a non-empty array`);
+      continue;
+    }
+    if (!sp[key].every((v) => typeof v === 'string' && v.length > 0)) {
+      errors.push(`S8-2 semver_policy.${key} must contain only non-empty strings`);
     }
   }
 
   // backward_compat_window deep checks
   const bc = doc.backward_compat_window || {};
-  if (typeof bc.duration_days !== 'number' || bc.duration_days < 1) {
+  requireExactKeys('S8-2 backward_compat_window', bc, [
+    'duration_days',
+    'strategy',
+    'deprecation_notice_required',
+  ]);
+  if (!Number.isInteger(bc.duration_days) || bc.duration_days < 1) {
     errors.push('S8-2 backward_compat_window.duration_days must be a positive integer');
   }
   if (typeof bc.strategy !== 'string' || bc.strategy.length === 0) {
@@ -65,6 +102,12 @@ function gateS82VersioningMigration() {
 
   // migration_strategy deep checks
   const ms = doc.migration_strategy || {};
+  requireExactKeys('S8-2 migration_strategy', ms, [
+    'approach',
+    'rollback_supported',
+    'data_migration_required',
+    'validation_before_cutover',
+  ]);
   if (typeof ms.approach !== 'string' || ms.approach.length === 0) {
     errors.push('S8-2 migration_strategy.approach must be a non-empty string');
   }
