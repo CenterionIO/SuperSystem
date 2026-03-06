@@ -276,6 +276,8 @@ for (const { wf, runDir } of runDirs) {
       for (const key of requiredKeys) {
         if (!(key in bundle.artifacts)) {
           errors.push(`RO-9 [${wf}]: bundle artifacts missing key: ${key}`);
+        } else if (bundle.artifacts[key] === null) {
+          errors.push(`RO-9 [${wf}]: bundle artifacts.${key} must not be null`);
         }
       }
     }

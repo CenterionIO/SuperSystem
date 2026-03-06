@@ -96,6 +96,25 @@ class Orchestrator {
       );
     }
 
+    // Emit request.json (normalized goal payload)
+    fs.writeFileSync(path.join(runDir, 'request.json'), JSON.stringify({
+      correlation_id: correlationId,
+      workflow_class: workflowClass,
+      goal,
+      requested_at: runState.started_at,
+    }, null, 2), 'utf8');
+
+    // Emit policy_snapshot.json (effective policy bundle)
+    fs.writeFileSync(path.join(runDir, 'policy_snapshot.json'), JSON.stringify({
+      correlation_id: correlationId,
+      policy_version: this.policy.version || 'v1',
+      routing_policy: this.policy.routingPolicy || {},
+      workflow_taxonomy: this.policy.taxonomy || {},
+      loop_control: this.loopControl,
+      gate_sequence_version: this.gateSequence.version || 'v1',
+      snapshot_at: new Date().toISOString(),
+    }, null, 2), 'utf8');
+
     // Emit trace.jsonl
     const traceLines = runState.transitions.map(t => JSON.stringify(t));
     fs.writeFileSync(path.join(runDir, 'trace.jsonl'), traceLines.join('\n') + '\n', 'utf8');
@@ -124,7 +143,7 @@ class Orchestrator {
     }
 
     // Emit manifest.json
-    const manifestArtifacts = ['VerificationArtifact.json', 'evidence_records.json', 'proof.json', 'trace.jsonl', 'run_state.json'];
+    const manifestArtifacts = ['VerificationArtifact.json', 'evidence_records.json', 'proof.json', 'trace.jsonl', 'run_state.json', 'request.json', 'policy_snapshot.json'];
     const manifestEntries = [];
     for (const file of manifestArtifacts) {
       const filePath = path.join(runDir, file);
