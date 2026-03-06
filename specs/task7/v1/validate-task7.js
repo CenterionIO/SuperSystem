@@ -167,8 +167,17 @@ function gateS85PolicyAsCodeCi() {
   if (!Array.isArray(doc.required_commands) || doc.required_commands.length === 0) {
     errors.push('S8-5 required_commands must be a non-empty array');
   }
-  if (typeof doc.fail_conditions !== 'object' || Object.keys(doc.fail_conditions).length === 0) {
+  if (typeof doc.fail_conditions !== 'object' || Array.isArray(doc.fail_conditions) || Object.keys(doc.fail_conditions).length === 0) {
     errors.push('S8-5 fail_conditions must be a non-empty object');
+  } else {
+    for (const [key, val] of Object.entries(doc.fail_conditions)) {
+      if (typeof key !== 'string' || key.length === 0) {
+        errors.push(`S8-5 fail_conditions has invalid key: ${key}`);
+      }
+      if (typeof val !== 'boolean') {
+        errors.push(`S8-5 fail_conditions.${key} must be boolean, got ${typeof val}`);
+      }
+    }
   }
 }
 
