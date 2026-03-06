@@ -6,6 +6,10 @@ const path = require('path');
 const crypto = require('crypto');
 const { PolicyBundle } = require('./policy_engine');
 const { EvidenceRegistry } = require('./evidence_registry');
+const { VerifyEngine } = require('./verify_engine');
+const { PlanAlignmentPlugin } = require('./plugins/plan_alignment');
+const { EvidenceIntegrityPlugin } = require('./plugins/evidence_integrity');
+const { FreshnessPlugin } = require('./plugins/freshness');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -21,6 +25,11 @@ class Orchestrator {
     if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
     this.outDir = outDir;
     this.registry = new EvidenceRegistry(evidenceDir);
+
+    this.verifyEngine = new VerifyEngine();
+    this.verifyEngine.registerPlugin('unit', new PlanAlignmentPlugin());
+    this.verifyEngine.registerPlugin('integration', new EvidenceIntegrityPlugin());
+    this.verifyEngine.registerPlugin('freshness', new FreshnessPlugin());
 
     this.adapters = {};
   }
@@ -58,6 +67,19 @@ class Orchestrator {
     // Persist run
     const runDir = path.join(this.outDir, correlationId);
     if (!fs.existsSync(runDir)) fs.mkdirSync(runDir, { recursive: true });
+
+    // Persist all intermediate artifacts
+    if (runState.artifacts.research_report) {
+      fs.writeFileSync(path.join(runDir, 'ResearchReport.json'), JSON.stringify(runState.artifacts.research_report, null, 2), 'utf8');
+    }
+    if (runState.artifacts.execution_plan) {
+      fs.writeFileSync(path.join(runDir, 'ExecutionPlan.json'), JSON.stringify(runState.artifacts.execution_plan, null, 2), 'utf8');
+    }
+    if (runState.artifacts.build_report) {
+      fs.writeFileSync(path.join(runDir, 'BuildReport.json'), JSON.stringify(runState.artifacts.build_report, null, 2), 'utf8');
+    }
+
+    // Persist run state (includes all artifacts + transitions)
     fs.writeFileSync(
       path.join(runDir, 'run_state.json'),
       JSON.stringify(runState, null, 2),
@@ -199,82 +221,30 @@ class Orchestrator {
   }
 
   _runBuildReview(run) {
-    // Full verification via verify adapter or inline
-    const adapter = this.adapters.verify;
-    if (!adapter) {
-      // Inline minimal verification
-      return this._inlineVerify(run);
-    }
-    return adapter.verify(run);
-  }
-
-  _inlineVerify(run) {
     const plan = run.artifacts.execution_plan;
     const build = run.artifacts.build_report;
-    if (!plan || !build) return { verdict: 'blocked', reason: 'Missing plan or build report' };
+    const evidenceRecords = this.registry.listByCorrelation(run.correlation_id);
 
-    const criteriaResults = [];
-    let overallPass = true;
-
-    for (const crit of plan.acceptance_criteria) {
-      const evidenceIds = build.evidence_map[crit.criteria_id] || [];
-      const hasEvidence = evidenceIds.length > 0;
-      let status = hasEvidence ? 'pass' : 'blocked';
-      status = this.policy.applyFailClosed(status, crit.required);
-
-      if (crit.required && status !== 'pass') overallPass = false;
-      criteriaResults.push({
-        criteria_id: crit.criteria_id,
-        status,
-        evidence_ids: evidenceIds,
-        rationale: hasEvidence ? 'Evidence present and verified.' : 'No evidence found.',
-        required: crit.required,
-        verification_type_used: 'unit',
-      });
-    }
-
-    const ladder = this.policy.ladder(run.workflow_class);
-    const verificationArtifact = {
-      verification_id: crypto.randomUUID(),
+    const result = this.verifyEngine.verify({
       correlation_id: run.correlation_id,
-      execution_plan_id: plan.execution_plan_id,
-      build_report_id: build.build_report_id,
+      execution_plan: plan,
+      build_report: build,
       workflow_class: run.workflow_class,
-      created_at: new Date().toISOString(),
-      overall_status: overallPass ? 'pass' : 'blocked',
-      criteria_results: criteriaResults,
-      freshness_results: {
-        freshness_required: plan.verification_requirements?.freshness_required || false,
-        checks_performed: [],
-        all_fresh: true,
-      },
-      ladder_compliance: {
-        required_ladder: ladder,
-        executed_ladder: ladder,
-        compliant: true,
-      },
-      fail_closed_enforced: true,
-      warn_rationale: null,
-      council_override: null,
-      artifact_hash: '', // placeholder
-    };
+      evidence_records: evidenceRecords,
+    });
 
-    // Compute artifact hash
-    const hashContent = JSON.stringify(verificationArtifact, Object.keys(verificationArtifact).filter(k => k !== 'artifact_hash').sort());
-    verificationArtifact.artifact_hash = crypto.createHash('sha256').update(hashContent).digest('hex');
-
-    run.artifacts.verification_artifact = verificationArtifact;
+    run.artifacts.verification_artifact = result.artifact;
 
     // Persist
     const runDir = path.join(this.outDir, run.correlation_id);
     if (!fs.existsSync(runDir)) fs.mkdirSync(runDir, { recursive: true });
     fs.writeFileSync(
       path.join(runDir, 'VerificationArtifact.json'),
-      JSON.stringify(verificationArtifact, null, 2),
+      JSON.stringify(result.artifact, null, 2),
       'utf8'
     );
 
-    return { verdict: verificationArtifact.overall_status };
+    return { verdict: result.verdict };
   }
 
   _transition(run, toState, reason) {
