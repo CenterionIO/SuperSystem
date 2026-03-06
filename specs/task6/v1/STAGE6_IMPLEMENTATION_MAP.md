@@ -33,10 +33,9 @@ Scope: add reviewer-facing auditability surfaces and policy controls on top of S
 - `S6-4` Status View Contract Gate
   - `status-view-contract.schema.json` declares required fields and validates sample payloads.
   - `blocked_reason` accepts null.
-- `S6-5` Cross-Contract Consistency Gate
+- `S6-5` Cross-Contract Consistency + Security/Retention/Redaction Policy Gate
   - Required autonomy modes exist and gate behavior is explicit.
   - Escalation response actions align with autonomy policy escalation actions.
-- `S6-7` Security Retention/Redaction Policy Gate
   - `security-retention-redaction-policy.json` validates against schema.
   - `audit_log_scope` must declare `include_events` and `exclude_fields`.
   - `secrets_field_patterns` entries must appear in `audit_log_scope.exclude_fields`.

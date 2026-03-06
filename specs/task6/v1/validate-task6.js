@@ -154,17 +154,17 @@ function gateS67RetentionRedactionPolicy() {
   const validate = createValidator(schema);
   if (!validate(doc)) {
     for (const err of validate.errors || []) {
-      errors.push(`S6-7 security-retention-redaction-policy invalid at ${err.instancePath || '/'}: ${err.message}`);
+      errors.push(`S6-5 security-retention-redaction-policy invalid at ${err.instancePath || '/'}: ${err.message}`);
     }
   }
 
   // audit_log_scope must have include_events and exclude_fields
   if (doc.audit_log_scope) {
     if (!Array.isArray(doc.audit_log_scope.include_events) || doc.audit_log_scope.include_events.length === 0) {
-      errors.push('S6-7 audit_log_scope.include_events must be a non-empty array');
+      errors.push('S6-5 audit_log_scope.include_events must be a non-empty array');
     }
     if (!Array.isArray(doc.audit_log_scope.exclude_fields) || doc.audit_log_scope.exclude_fields.length === 0) {
-      errors.push('S6-7 audit_log_scope.exclude_fields must be a non-empty array');
+      errors.push('S6-5 audit_log_scope.exclude_fields must be a non-empty array');
     }
   }
 
@@ -172,7 +172,7 @@ function gateS67RetentionRedactionPolicy() {
   const excludeSet = new Set(doc.audit_log_scope?.exclude_fields || []);
   for (const pat of doc.secrets_field_patterns || []) {
     if (!excludeSet.has(pat)) {
-      errors.push(`S6-7 secrets pattern '${pat}' not in audit_log_scope.exclude_fields`);
+      errors.push(`S6-5 secrets pattern '${pat}' not in audit_log_scope.exclude_fields`);
     }
   }
 }
@@ -212,8 +212,7 @@ function main() {
   console.log('- S6-2: escalation contract schema gate');
   console.log('- S6-3: autonomy policy schema gate');
   console.log('- S6-4: status-view-contract schema gate');
-  console.log('- S6-5: cross-contract consistency gate');
-  console.log('- S6-7: security retention/redaction policy gate');
+  console.log('- S6-5: cross-contract consistency + security/retention/redaction policy gate');
   console.log('- S6-6: CI fail-closed gate');
 }
 
