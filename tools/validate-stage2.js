@@ -12,11 +12,11 @@ const path = require('path');
 const Ajv = require('ajv');
 const addFormats = require('ajv-formats');
 
-const ROOT = path.join(__dirname);
+const ROOT = path.join(__dirname, '..');
 const POLICY_DIR = path.join(ROOT, 'policy', 'v1');
 const EXAMPLES_DIR = path.join(POLICY_DIR, 'examples');
-const CONTRACT_PATH = path.join(ROOT, 'contracts', 'v1', 'VerifyMCP-contract.json');
-const ROLE_MATRIX_PATH = path.join(ROOT, 'task1', 'role-authority-matrix.json');
+const CONTRACT_PATH = path.join(ROOT, 'specs', 'task1', 'v1', 'VerifyMCP-contract.json');
+const ROLE_MATRIX_PATH = path.join(ROOT, 'specs', 'task1', 'v1', 'role-authority-matrix.json');
 
 const errors = [];
 

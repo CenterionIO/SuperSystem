@@ -15,33 +15,33 @@ const BASE = __dirname;
 const SCHEMA_EXAMPLE_PAIRS = [
   {
     name: "ResearchReport",
-    schema: "schemas/v1/ResearchReport.json",
-    example: "examples/v1/ResearchReport-example.json",
-    ownership: "ownership/v1/ResearchReport.ownership.json",
+    schema: "schemas/ResearchReport.json",
+    example: "examples/ResearchReport-example.json",
+    ownership: "ownership/ResearchReport.ownership.json",
   },
   {
     name: "ExecutionPlan",
-    schema: "schemas/v1/ExecutionPlan.json",
-    example: "examples/v1/ExecutionPlan-example.json",
-    ownership: "ownership/v1/ExecutionPlan.ownership.json",
+    schema: "schemas/ExecutionPlan.json",
+    example: "examples/ExecutionPlan-example.json",
+    ownership: "ownership/ExecutionPlan.ownership.json",
   },
   {
     name: "BuildReport",
-    schema: "schemas/v1/BuildReport.json",
-    example: "examples/v1/BuildReport-example.json",
-    ownership: "ownership/v1/BuildReport.ownership.json",
+    schema: "schemas/BuildReport.json",
+    example: "examples/BuildReport-example.json",
+    ownership: "ownership/BuildReport.ownership.json",
   },
   {
     name: "VerificationArtifact",
-    schema: "schemas/v1/VerificationArtifact.json",
-    example: "examples/v1/VerificationArtifact-example.json",
-    ownership: "ownership/v1/VerificationArtifact.ownership.json",
+    schema: "schemas/VerificationArtifact.json",
+    example: "examples/VerificationArtifact-example.json",
+    ownership: "ownership/VerificationArtifact.ownership.json",
   },
 ];
 
-const STATE_MACHINE_PATH = "task1/runtime-state-machine-v1.json";
-const ROLE_MATRIX_PATH = "task1/role-authority-matrix.json";
-const INTERFACE_PATH = "task1/orchestrator-planner-interface.json";
+const STATE_MACHINE_PATH = "runtime-state-machine-v1.json";
+const ROLE_MATRIX_PATH = "role-authority-matrix.json";
+const INTERFACE_PATH = "orchestrator-planner-interface.json";
 
 // Detect old-style paths like /field[] (no slash before bracket)
 const OLD_STYLE_PATH_REGEX = /[a-zA-Z0-9_]\[/;
@@ -231,8 +231,8 @@ function runGateB() {
 
   // Also check the Orchestrator-Planner interface ownership (now in standalone files)
   const INTERFACE_OWNERSHIP = {
-    PlanningRequest: "ownership/v1/PlanningRequest.ownership.json",
-    PlanningResponse: "ownership/v1/PlanningResponse.ownership.json",
+    PlanningRequest: "ownership/PlanningRequest.ownership.json",
+    PlanningResponse: "ownership/PlanningResponse.ownership.json",
   };
   for (const section of ["PlanningRequest", "PlanningResponse"]) {
     const ownershipFile = loadJSON(INTERFACE_OWNERSHIP[section]);
@@ -303,7 +303,7 @@ function runGateC() {
 
   // C.3: PlanningRequest fields all written by Orchestrator
   const iface = loadJSON(INTERFACE_PATH);
-  const reqOwnershipFile = loadJSON("ownership/v1/PlanningRequest.ownership.json");
+  const reqOwnershipFile = loadJSON("ownership/PlanningRequest.ownership.json");
   const reqOwnership = reqOwnershipFile.fieldOwnership || {};
   for (const [fpath, meta] of Object.entries(reqOwnership)) {
     if (!meta.writtenBy.includes("Orchestrator")) {
@@ -315,7 +315,7 @@ function runGateC() {
   }
 
   // C.4: PlanningResponse plan content fields written by Planner
-  const respOwnershipFile = loadJSON("ownership/v1/PlanningResponse.ownership.json");
+  const respOwnershipFile = loadJSON("ownership/PlanningResponse.ownership.json");
   const respOwnership = respOwnershipFile.fieldOwnership || {};
   for (const [fpath, meta] of Object.entries(respOwnership)) {
     const fieldName = fpath.split("/").filter(Boolean).pop();
