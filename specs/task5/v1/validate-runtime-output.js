@@ -233,6 +233,57 @@ for (const { wf, runDir } of runDirs) {
   }
 }
 
+// ─── RO-9: Generate and validate canonical_conformance_bundle.json ───
+
+for (const { wf, runDir } of runDirs) {
+  // Generate the bundle
+  try {
+    execSync(`node tools/export-canonical-conformance.js "${runDir}"`, {
+      cwd: ROOT,
+      encoding: 'utf8',
+      timeout: 10000,
+    });
+  } catch (e) {
+    errors.push(`RO-9 [${wf}]: export-canonical-conformance failed — ${e.message}`);
+    continue;
+  }
+
+  const bundlePath = path.join(runDir, 'canonical_conformance_bundle.json');
+  if (!fs.existsSync(bundlePath)) {
+    errors.push(`RO-9 [${wf}]: canonical_conformance_bundle.json not generated`);
+    continue;
+  }
+
+  try {
+    const bundle = JSON.parse(fs.readFileSync(bundlePath, 'utf8'));
+    if (bundle.version !== 'v1') {
+      errors.push(`RO-9 [${wf}]: bundle version must be v1`);
+    }
+    if (!bundle.workflow_class || typeof bundle.workflow_class !== 'string') {
+      errors.push(`RO-9 [${wf}]: bundle workflow_class missing`);
+    }
+    if (!bundle.run_id || typeof bundle.run_id !== 'string') {
+      errors.push(`RO-9 [${wf}]: bundle run_id missing`);
+    }
+    if (!bundle.artifacts || typeof bundle.artifacts !== 'object') {
+      errors.push(`RO-9 [${wf}]: bundle artifacts missing`);
+    } else {
+      const requiredKeys = [
+        'verification_artifact', 'execution_plan', 'build_report',
+        'evidence_registry', 'proof', 'manifest', 'trace',
+        'run_state', 'policy_snapshot', 'request'
+      ];
+      for (const key of requiredKeys) {
+        if (!(key in bundle.artifacts)) {
+          errors.push(`RO-9 [${wf}]: bundle artifacts missing key: ${key}`);
+        }
+      }
+    }
+  } catch {
+    errors.push(`RO-9 [${wf}]: canonical_conformance_bundle.json invalid JSON`);
+  }
+}
+
 // ─── Report ───
 
 if (errors.length > 0) {
@@ -252,3 +303,4 @@ console.log('  - RO-5: proof.json exists with pass verdict');
 console.log('  - RO-6: manifest.json structure + sha256 verification');
 console.log('  - RO-7: evidence files exist with hash/size match');
 console.log('  - RO-8: trace.jsonl valid JSONL');
+console.log('  - RO-9: canonical_conformance_bundle.json generated + validated');
