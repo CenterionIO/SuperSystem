@@ -3,7 +3,7 @@
   "title": "StatusViewContract",
   "description": "Schema for the reviewer-facing status payload. Defines the required shape of any status view emitted by the runtime.",
   "type": "object",
-  "required": ["correlation_id", "workflow_class", "autonomy_mode", "current_state", "last_transition_at", "blocked_reason", "next_action"],
+  "required": ["correlation_id", "workflow_class", "autonomy_mode", "current_state", "run_status", "last_transition_at", "why", "blocked_reason", "next_action"],
   "properties": {
     "correlation_id": {
       "type": "string",
@@ -20,9 +20,16 @@
     "current_state": {
       "type": "string"
     },
+    "run_status": {
+      "type": "string",
+      "enum": ["running", "blocked"]
+    },
     "last_transition_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "why": {
+      "type": "string"
     },
     "blocked_reason": {
       "type": ["string", "null"]
@@ -31,5 +38,5 @@
       "type": "string"
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false
 }
