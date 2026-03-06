@@ -1,0 +1,65 @@
+{
+  "title": "Loop Control Config v1",
+  "version": "1.0.0",
+  "description": "Standalone loop control configuration consumable by the runtime engine. Extracted from state machine spec for independent policy management.",
+
+  "max_iterations_per_phase": {
+    "researching": 3,
+    "planning": 5,
+    "building": 10,
+    "plan_blocker": 3,
+    "blocked_platform": 3,
+    "research_review": 3,
+    "plan_review": 5,
+    "build_review": 3
+  },
+
+  "max_tool_calls_per_phase": {
+    "researching": 50,
+    "planning": 20,
+    "building": 100,
+    "research_review": 10,
+    "plan_review": 10,
+    "build_review": 20
+  },
+
+  "retry_caps_by_error_type": {
+    "workflow_error": 3,
+    "platform_error": 3,
+    "verification_fail": 2
+  },
+
+  "heartbeat_policy": {
+    "interval_seconds": 30,
+    "stall_threshold_missed_beats": 3,
+    "stall_action": "workflow_error",
+    "applies_to_states": [
+      "classifying", "researching", "research_review",
+      "planning", "plan_review", "building", "build_review",
+      "plan_blocker", "blocked_platform"
+    ]
+  },
+
+  "exceeded_action": {
+    "default": "escalation",
+    "description": "When any loop limit is exceeded, workflow routes to this state."
+  },
+
+  "counter_reset_rules": [
+    {
+      "id": "CR-001",
+      "rule": "Phase iteration counters reset when workflow transitions to a different phase.",
+      "example": "researching counter resets when workflow moves to planning."
+    },
+    {
+      "id": "CR-002",
+      "rule": "Tool call counters are per-phase-entry. They reset on re-entry to the phase.",
+      "example": "building tool calls reset when workflow re-enters building from build_review fail."
+    },
+    {
+      "id": "CR-003",
+      "rule": "Error retry counters are cumulative per workflow instance. They do NOT reset on phase change.",
+      "example": "workflow_error retry count persists across researching -> planning -> building."
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "title": "Runtime Modes v1",
+  "version": "1.0.0",
+  "description": "Maps user intent modes to workflow classes, gate sequences, and autonomy defaults. The runtime engine selects mode based on Operator input and routes accordingly.",
+
+  "modes": {
+    "chat": {
+      "description": "Conversational mode. No build or research pipeline. Operator handles directly or fast-paths to transcription.",
+      "workflow_classes": ["transcription"],
+      "entry_state": "idle",
+      "gate_sequence": "minimal",
+      "default_autonomy_mode": "full_auto",
+      "requires_research": false,
+      "requires_planning": false,
+      "triggers": [
+        "User sends conversational message without explicit build/research intent",
+        "User selects transcription tool"
+      ]
+    },
+    "build": {
+      "description": "Standard build mode. Full gate sequence with planning and verification.",
+      "workflow_classes": ["code_change", "mcp_tool", "ui_change", "ops_fix"],
+      "entry_state": "idle",
+      "gate_sequence": "full",
+      "default_autonomy_mode": "approve_final",
+      "requires_research": true,
+      "requires_planning": true,
+      "triggers": [
+        "User requests code change, tool creation, UI modification, or ops fix",
+        "User selects a build-class intent mode"
+      ]
+    },
+    "research_build": {
+      "description": "Research-first mode. Research phase runs before planning. May terminate after research if research_only.",
+      "workflow_classes": ["research_only", "code_change", "mcp_tool", "ui_change", "ops_fix"],
+      "entry_state": "idle",
+      "gate_sequence": "full",
+      "default_autonomy_mode": "approve_final",
+      "requires_research": true,
+      "requires_planning": true,
+      "triggers": [
+        "User requests investigation or research before building",
+        "Orchestrator classifies task as requiring research phase",
+        "User selects research_only intent"
+      ]
+    }
+  },
+
+  "mode_selection_rules": [
+    {
+      "id": "MS-001",
+      "rule": "Operator classifies user intent into a mode. If ambiguous, default to research_build.",
+      "enforced_by": "runtime_guard"
+    },
+    {
+      "id": "MS-002",
+      "rule": "Mode selection is immutable once workflow enters classifying state. Mode change requires new workflow.",
+      "enforced_by": "runtime_guard"
+    },
+    {
+      "id": "MS-003",
+      "rule": "research_only workflows in research_build mode skip planning and building phases. Flow: idle -> classifying -> researching -> research_review -> complete.",
+      "enforced_by": "runtime_guard"
+    },
+    {
+      "id": "MS-004",
+      "rule": "Autonomy mode may be overridden by user preference or policy at workflow start. Policy override takes precedence.",
+      "enforced_by": "policy_engine"
+    }
+  ],
+
+  "mode_to_gate_sequence": {
+    "minimal": ["build_review"],
+    "full": ["research_review", "plan_review", "build_review"]
+  }
+}

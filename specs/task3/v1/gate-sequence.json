@@ -1,0 +1,127 @@
+{
+  "title": "Gate Sequence v1",
+  "version": "1.0.0",
+  "description": "Formal binding of verify gates to state transitions. Each gate defines when it fires, what artifacts it requires, what checks it runs, and where it routes on each verdict.",
+
+  "gates": {
+    "G-001": {
+      "name": "Research Review Gate",
+      "fires_at_state": "research_review",
+      "owner": "VerifyMCP",
+      "trigger": "ResearchReport produced and workflow transitions to research_review",
+      "required_artifacts": [
+        { "type": "ResearchReport", "source": "Research", "schema": "schemas/ResearchReport.json" }
+      ],
+      "checks": [
+        "ResearchReport schema validation",
+        "Freshness policy compliance",
+        "Gap impact assessment"
+      ],
+      "routing": {
+        "pass": "planning",
+        "fail": "researching",
+        "blocked": "escalation"
+      },
+      "retry_cap_ref": "verification_fail",
+      "skip_when": ["workflow_class == transcription"]
+    },
+    "G-002": {
+      "name": "Plan Review Gate",
+      "fires_at_state": "plan_review",
+      "owner": "VerifyMCP",
+      "trigger": "ExecutionPlan produced and workflow transitions to plan_review",
+      "required_artifacts": [
+        { "type": "ExecutionPlan", "source": "Planner", "schema": "schemas/ExecutionPlan.json" },
+        { "type": "ResearchReport", "source": "Research", "schema": "schemas/ResearchReport.json", "optional": true }
+      ],
+      "checks": [
+        "ExecutionPlan schema validation",
+        "Every step has criteria_ids (OP-005)",
+        "Orchestrator boundary check (AC-004)",
+        "Planner boundary check (AC-003)",
+        "correlation_id echo equality (OP-003)",
+        "Plan references valid research_report_id",
+        "All fieldOwnership entries resolve (AC-002)",
+        "No fields without ownership (AC-001)"
+      ],
+      "routing": {
+        "pass": "building",
+        "fail": "planning",
+        "blocked": "escalation"
+      },
+      "retry_cap_ref": "verification_fail",
+      "skip_when": ["workflow_class == transcription", "workflow_class == research_only"]
+    },
+    "G-003": {
+      "name": "Build Review Gate",
+      "fires_at_state": "build_review",
+      "owner": "VerifyMCP",
+      "trigger": "BuildReport produced and workflow transitions to build_review",
+      "required_artifacts": [
+        { "type": "BuildReport", "source": "Builder", "schema": "schemas/BuildReport.json" },
+        { "type": "ExecutionPlan", "source": "Planner", "schema": "schemas/ExecutionPlan.json" }
+      ],
+      "checks": [
+        "BuildReport schema validation",
+        "Evidence map covers all criteria_ids (AC-005)",
+        "Verification ladder compliance",
+        "Freshness checks (if required)",
+        "Fail-closed enforcement (FC-001 through FC-005)",
+        "Builder boundary check: no plan or routing mutations",
+        "correlation_id echo equality"
+      ],
+      "routing": {
+        "pass": "complete",
+        "fail": "building",
+        "blocked": "escalation"
+      },
+      "retry_cap_ref": "verification_fail",
+      "skip_when": []
+    },
+    "G-004": {
+      "name": "Platform Recovery Gate",
+      "fires_at_state": "blocked_platform",
+      "owner": "PlatformRecovery",
+      "trigger": "PlatformRecovery completes runbook execution",
+      "required_artifacts": [
+        { "type": "recovery_result", "source": "PlatformRecovery" },
+        { "type": "health_check_result", "source": "PlatformRecovery" }
+      ],
+      "checks": [
+        "Health verification passes",
+        "Runbook exit conditions met"
+      ],
+      "routing": {
+        "pass": null,
+        "fail": "escalation",
+        "blocked": "escalation"
+      },
+      "pass_behavior": "return_to_previous_state via resume_policy",
+      "retry_cap_ref": "platform_error",
+      "skip_when": []
+    }
+  },
+
+  "gate_invariants": [
+    {
+      "id": "GI-001",
+      "rule": "A gate cannot be skipped for a workflow class unless explicitly listed in skip_when.",
+      "enforced_by": "runtime_guard"
+    },
+    {
+      "id": "GI-002",
+      "rule": "All required_artifacts must be present before gate fires. Missing artifact = blocked.",
+      "enforced_by": "runtime_guard"
+    },
+    {
+      "id": "GI-003",
+      "rule": "Gate verdict is deterministic: same artifacts + same checks = same verdict.",
+      "enforced_by": "verifier_contract"
+    },
+    {
+      "id": "GI-004",
+      "rule": "Gate routing must match the state machine verify_gate transitions exactly.",
+      "enforced_by": "validator"
+    }
+  ]
+}

@@ -1,0 +1,167 @@
+{
+  "title": "Error Lane Runbook v1",
+  "version": "1.0.0",
+  "description": "Defines error classification, recovery procedures, and escalation rules for workflow_error and platform_error lanes.",
+
+  "error_classification": {
+    "description": "Rules for classifying errors into workflow_error or platform_error.",
+    "rules": [
+      {
+        "id": "EC-001",
+        "condition": "Error originates from tool/API failure (timeout, connection reset, service unavailable)",
+        "classification": "platform_error",
+        "rationale": "Infrastructure issue, not workflow logic fault."
+      },
+      {
+        "id": "EC-002",
+        "condition": "Error originates from invalid artifact, schema violation, or boundary violation",
+        "classification": "workflow_error",
+        "rationale": "Workflow logic or data fault."
+      },
+      {
+        "id": "EC-003",
+        "condition": "Error originates from resource exhaustion (disk, memory, rate limit)",
+        "classification": "platform_error",
+        "rationale": "Platform capacity issue."
+      },
+      {
+        "id": "EC-004",
+        "condition": "Error originates from verification failure (check returned fail or blocked)",
+        "classification": "workflow_error",
+        "rationale": "Verification found a defect in workflow output."
+      },
+      {
+        "id": "EC-005",
+        "condition": "Error type is ambiguous or unknown",
+        "classification": "platform_error",
+        "rationale": "Fail-closed: treat unknown errors as platform errors to trigger bounded recovery."
+      }
+    ]
+  },
+
+  "workflow_error_handling": {
+    "description": "Handling for errors classified as workflow_error.",
+    "owner": "Orchestrator",
+    "procedure": [
+      "1. Log error with correlation_id, source_state, error_detail.",
+      "2. Check retry_cap for workflow_error (default: 3).",
+      "3. IF under retry cap: route to previous active state (researching, planning, or building) via resume_policy.",
+      "4. IF retry cap exceeded: route to escalation.",
+      "5. Increment retry counter for this workflow."
+    ],
+    "retry_cap": 3,
+    "resume_targets": ["researching", "planning", "building"],
+    "exceeded_action": "escalation"
+  },
+
+  "platform_error_handling": {
+    "description": "Handling for errors classified as platform_error.",
+    "owner": "Orchestrator",
+    "procedure": [
+      "1. Log error with correlation_id, source_state, error_detail, platform_context.",
+      "2. Record previous_state for resume after recovery.",
+      "3. Transition to platform_error state.",
+      "4. Automatically route to blocked_platform (PlatformRecovery takes ownership)."
+    ],
+    "auto_route_to": "blocked_platform"
+  },
+
+  "recovery_runbook": {
+    "description": "Bounded recovery procedures executed by PlatformRecovery in blocked_platform state.",
+    "owner": "PlatformRecovery",
+    "actions": [
+      {
+        "action_id": "RA-001",
+        "name": "retry_operation",
+        "description": "Retry the failed operation with exponential backoff.",
+        "max_attempts": 3,
+        "backoff": { "initial_ms": 1000, "multiplier": 2, "max_ms": 30000 },
+        "applicable_when": ["transient_network_error", "rate_limit", "service_temporarily_unavailable"]
+      },
+      {
+        "action_id": "RA-002",
+        "name": "reconnect",
+        "description": "Tear down and re-establish connection to the failed service.",
+        "max_attempts": 2,
+        "timeout_ms": 30000,
+        "applicable_when": ["connection_reset", "socket_timeout", "tls_handshake_failure"]
+      },
+      {
+        "action_id": "RA-003",
+        "name": "clear_cache",
+        "description": "Clear local caches that may contain stale or corrupted data.",
+        "max_attempts": 1,
+        "applicable_when": ["stale_data_suspected", "cache_corruption"]
+      },
+      {
+        "action_id": "RA-004",
+        "name": "restart_service",
+        "description": "Restart the failed service process.",
+        "max_attempts": 1,
+        "timeout_ms": 60000,
+        "applicable_when": ["service_crashed", "process_hang"],
+        "requires_health_check_after": true
+      }
+    ],
+    "action_selection": [
+      "1. Match error type to applicable_when tags.",
+      "2. Execute matching actions in order (RA-001 first, then RA-002, etc.).",
+      "3. After each action, run health verification.",
+      "4. IF health passes: signal recovery success.",
+      "5. IF all applicable actions exhausted without health pass: signal recovery failure."
+    ],
+    "bounds": {
+      "max_total_recovery_attempts": 3,
+      "max_total_recovery_time_ms": 180000,
+      "max_actions_per_recovery": 4
+    },
+    "exit_conditions": [
+      "Health verification passes after a recovery action",
+      "All applicable actions exhausted",
+      "Total recovery attempts exceed max_total_recovery_attempts",
+      "Total recovery time exceeds max_total_recovery_time_ms"
+    ]
+  },
+
+  "health_verification": {
+    "description": "Independent health check required before resume signal.",
+    "checks": [
+      {
+        "check_id": "HC-001",
+        "name": "service_connectivity",
+        "description": "Verify the previously-failed service responds to a health probe.",
+        "timeout_ms": 5000
+      },
+      {
+        "check_id": "HC-002",
+        "name": "state_consistency",
+        "description": "Verify workflow state has not been corrupted during the error/recovery cycle.",
+        "timeout_ms": 5000
+      },
+      {
+        "check_id": "HC-003",
+        "name": "artifact_integrity",
+        "description": "Verify all artifacts produced before the error are still accessible and valid.",
+        "timeout_ms": 10000
+      }
+    ],
+    "pass_condition": "All checks pass",
+    "fail_action": "Continue recovery actions or escalate if exhausted"
+  },
+
+  "escalation_from_error": {
+    "description": "When recovery or retry is exhausted, escalation engages the Operator to present status to the user.",
+    "escalation_artifacts": [
+      "error_classification_record",
+      "recovery_action_log (if platform_error)",
+      "retry_count_and_cap (if workflow_error)",
+      "health_check_results (if platform_error)",
+      "previous_state and correlation_id"
+    ],
+    "user_options": [
+      "Retry from previous state",
+      "Restart workflow from idle",
+      "Cancel workflow"
+    ]
+  }
+}

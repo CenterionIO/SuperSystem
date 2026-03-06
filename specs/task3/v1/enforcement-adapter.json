@@ -1,0 +1,165 @@
+{
+  "title": "Enforcement Adapter v1",
+  "version": "1.0.0",
+  "description": "Maps policy enforcement points to runtime behavior. Each enforcement point type defines how it intercepts, validates, and denies or allows actions at runtime.",
+
+  "enforcement_points": {
+    "tool_allowlist": {
+      "description": "Intercepts tool invocation. Checks caller role against allowed_tools/denied_tools in permissions_policy.",
+      "intercept_at": "tool_invocation",
+      "inputs": ["caller_role", "tool_id", "permissions_policy"],
+      "check_logic": [
+        "IF tool_id in denied_tools for caller_role THEN deny",
+        "IF default_deny AND tool_id NOT in allowed_tools for caller_role THEN deny",
+        "ELSE allow"
+      ],
+      "on_deny": {
+        "action": "block_invocation",
+        "log": true,
+        "evidence": {
+          "type": "enforcement_denial",
+          "fields": ["correlation_id", "caller_role", "tool_id", "denial_reason", "timestamp"]
+        },
+        "escalation": "workflow_error"
+      },
+      "on_allow": {
+        "action": "pass_through",
+        "log": true
+      }
+    },
+    "path_scope_guard": {
+      "description": "Intercepts file system read/write operations. Checks caller role against path_scope in permissions_policy.",
+      "intercept_at": "file_operation",
+      "inputs": ["caller_role", "operation_type", "target_path", "permissions_policy"],
+      "check_logic": [
+        "IF operation_type == write AND target_path NOT matched by write scope patterns THEN deny",
+        "IF operation_type == read AND target_path NOT matched by read scope patterns THEN deny",
+        "ELSE allow"
+      ],
+      "path_matching": "glob_pattern",
+      "on_deny": {
+        "action": "block_operation",
+        "log": true,
+        "evidence": {
+          "type": "enforcement_denial",
+          "fields": ["correlation_id", "caller_role", "operation_type", "target_path", "denial_reason", "timestamp"]
+        },
+        "escalation": "workflow_error"
+      },
+      "on_allow": {
+        "action": "pass_through",
+        "log": true
+      }
+    },
+    "network_scope_guard": {
+      "description": "Intercepts network requests. Checks caller role against network_scope in permissions_policy.",
+      "intercept_at": "network_request",
+      "inputs": ["caller_role", "target_endpoint", "permissions_policy"],
+      "check_logic": [
+        "IF target_endpoint matches deny patterns THEN deny",
+        "IF target_endpoint NOT matched by allow patterns THEN deny",
+        "ELSE allow"
+      ],
+      "on_deny": {
+        "action": "block_request",
+        "log": true,
+        "evidence": {
+          "type": "enforcement_denial",
+          "fields": ["correlation_id", "caller_role", "target_endpoint", "denial_reason", "timestamp"]
+        },
+        "escalation": "workflow_error"
+      },
+      "on_allow": {
+        "action": "pass_through",
+        "log": true
+      }
+    },
+    "runtime_guard": {
+      "description": "Intercepts state transitions and artifact writes. Validates against state machine spec, boundary rules, and loop controls.",
+      "intercept_at": "state_transition_or_artifact_write",
+      "inputs": ["caller_role", "current_state", "target_state", "artifact", "state_machine_spec", "loop_control_config"],
+      "check_logic": [
+        "IF state transition not in state_machine_spec.transitions THEN deny",
+        "IF caller_role != state.owner for target_state THEN deny",
+        "IF loop iteration count exceeds max_iterations_per_phase THEN route to exceeded_action",
+        "IF tool call count exceeds max_tool_calls_per_phase THEN route to exceeded_action",
+        "IF heartbeat missed >= stall_threshold THEN route to stall_action",
+        "IF artifact contains fields not writable by caller_role per ownership THEN deny"
+      ],
+      "on_deny": {
+        "action": "block_transition_or_write",
+        "log": true,
+        "evidence": {
+          "type": "enforcement_denial",
+          "fields": ["correlation_id", "caller_role", "current_state", "target_state", "denial_reason", "timestamp"]
+        },
+        "escalation": "workflow_error"
+      },
+      "on_allow": {
+        "action": "pass_through",
+        "log": true
+      }
+    },
+    "verifier_gate": {
+      "description": "Post-hoc verification by VerifyMCP. Checks that artifacts produced by a role conform to ownership and boundary rules.",
+      "intercept_at": "post_artifact_production",
+      "inputs": ["artifact", "producer_role", "ownership_map", "boundary_rules"],
+      "check_logic": [
+        "FOR EACH field in artifact: IF field writtenBy does not include producer_role AND field echoedBy does not include producer_role THEN flag violation",
+        "IF producer_role == Planner AND artifact contains routing mutation fields THEN flag violation (OP-001)",
+        "IF producer_role == Orchestrator AND artifact contains plan content fields THEN flag violation (OP-002)",
+        "IF correlation_id is not byte-identical to request correlation_id THEN flag violation (OP-003)"
+      ],
+      "on_violation": {
+        "action": "set_check_status_to_fail",
+        "log": true,
+        "evidence": {
+          "type": "boundary_violation",
+          "fields": ["correlation_id", "producer_role", "violated_rule", "field_path", "timestamp"]
+        }
+      }
+    },
+    "policy_engine": {
+      "description": "Evaluates policy rules at decision points. Consults override_policy for conflict resolution.",
+      "intercept_at": "policy_decision_point",
+      "inputs": ["decision_type", "context", "workflow_taxonomy", "routing_policy", "override_policy"],
+      "check_logic": [
+        "Evaluate decision against policy in precedence order (override_policy.precedence)",
+        "IF conflict between policies THEN apply precedence chain",
+        "IF council_override requested THEN check council_override.allowed_when conditions",
+        "IF council_override conditions not met THEN deny override"
+      ],
+      "on_deny": {
+        "action": "apply_default_policy",
+        "log": true,
+        "evidence": {
+          "type": "policy_decision",
+          "fields": ["correlation_id", "decision_type", "applied_policy", "overridden_policy", "timestamp"]
+        }
+      }
+    }
+  },
+
+  "adapter_invariants": [
+    {
+      "id": "EA-001",
+      "rule": "Every enforcement denial produces an evidence artifact with correlation_id.",
+      "enforced_by": "adapter_self_check"
+    },
+    {
+      "id": "EA-002",
+      "rule": "Enforcement points are evaluated before the action takes effect (pre-check), except verifier_gate which is post-hoc.",
+      "enforced_by": "runtime_architecture"
+    },
+    {
+      "id": "EA-003",
+      "rule": "default_deny from permissions_policy means any action not explicitly allowed is denied.",
+      "enforced_by": "tool_allowlist"
+    },
+    {
+      "id": "EA-004",
+      "rule": "Enforcement adapter cannot be bypassed. All tool/file/network/state operations pass through their enforcement point.",
+      "enforced_by": "runtime_architecture"
+    }
+  ]
+}
