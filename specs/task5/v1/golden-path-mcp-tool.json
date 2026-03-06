@@ -1,0 +1,365 @@
+{
+  "title": "Golden Path: mcp_tool",
+  "version": "1.0.0",
+  "description": "Complete end-to-end trace of an mcp_tool workflow: add a new MCP tool server (time-lookup). Every artifact conforms to its schema, every evidence_id resolves, every criteria_id traces through the full pipeline.",
+
+  "workflow_metadata": {
+    "correlation_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
+    "workflow_class": "mcp_tool",
+    "autonomy_mode": "approve_final",
+    "risk_tier": "medium",
+    "goal": "Create an MCP tool server that exposes a 'current_time' tool returning the current UTC timestamp in ISO 8601 format."
+  },
+
+  "state_trace": {
+    "description": "Ordered state transitions matching routing_policy.classes.mcp_tool.normal_flow.",
+    "transitions": [
+      { "from": "idle",            "to": "classifying",     "trigger": "User submits request via Operator",      "gate": null },
+      { "from": "classifying",     "to": "researching",     "trigger": "workflow_class=mcp_tool requires research", "gate": null },
+      { "from": "researching",     "to": "research_review", "trigger": "ResearchReport produced",                "gate": "G-001" },
+      { "from": "research_review", "to": "planning",        "trigger": "G-001 pass",                             "gate": null },
+      { "from": "planning",        "to": "plan_review",     "trigger": "ExecutionPlan produced",                  "gate": "G-002" },
+      { "from": "plan_review",     "to": "building",        "trigger": "G-002 pass",                             "gate": null },
+      { "from": "building",        "to": "build_review",    "trigger": "BuildReport produced",                   "gate": "G-003" },
+      { "from": "build_review",    "to": "complete",        "trigger": "G-003 pass",                             "gate": null }
+    ]
+  },
+
+  "artifacts": {
+    "research_report": {
+      "research_report_id": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+      "correlation_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
+      "workflow_class": "mcp_tool",
+      "created_at": "2026-03-05T11:00:00Z",
+      "findings": [
+        {
+          "finding_id": "f-101",
+          "claim": "The MCP SDK (@modelcontextprotocol/sdk) provides a Server class with tool registration via server.tool().",
+          "confidence": "high",
+          "sources": ["https://modelcontextprotocol.io/docs/concepts/tools"],
+          "freshness_checked_at": "2026-03-05T11:00:00Z"
+        },
+        {
+          "finding_id": "f-102",
+          "claim": "MCP tool servers communicate over stdio transport using StdioServerTransport.",
+          "confidence": "high",
+          "sources": ["https://modelcontextprotocol.io/docs/concepts/transports"],
+          "freshness_checked_at": "2026-03-05T11:00:00Z"
+        },
+        {
+          "finding_id": "f-103",
+          "claim": "The project convention places MCP servers in mcp-servers/ directory with individual package.json per server.",
+          "confidence": "high",
+          "sources": ["file://mcp-servers/README.md"],
+          "freshness_checked_at": null
+        }
+      ],
+      "confidence": "high",
+      "freshness": {
+        "policy_applied": true,
+        "all_time_sensitive_checked": true
+      },
+      "sources": [
+        "https://modelcontextprotocol.io/docs/concepts/tools",
+        "https://modelcontextprotocol.io/docs/concepts/transports",
+        "file://mcp-servers/README.md"
+      ],
+      "gaps": []
+    },
+
+    "execution_plan": {
+      "execution_plan_id": "bb22cc33-dd44-ee55-ff66-778899001122",
+      "correlation_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
+      "workflow_class": "mcp_tool",
+      "version": 1,
+      "created_at": "2026-03-05T11:05:00Z",
+      "research_report_id": "aa11bb22-cc33-dd44-ee55-ff6677889900",
+      "steps": [
+        {
+          "step_id": "step-101",
+          "order": 1,
+          "action": "Create mcp-servers/time-lookup/index.js with MCP Server exposing 'current_time' tool.",
+          "description": "Implement the MCP tool server with current_time tool returning ISO 8601 UTC timestamp.",
+          "criteria_ids": ["crit-101"],
+          "tools_required": ["file.write"],
+          "paths_affected": ["mcp-servers/time-lookup/index.js"],
+          "verification_type": "unit"
+        },
+        {
+          "step_id": "step-102",
+          "order": 2,
+          "action": "Create mcp-servers/time-lookup/package.json with dependencies on @modelcontextprotocol/sdk.",
+          "description": "Set up package manifest for the MCP tool server.",
+          "criteria_ids": ["crit-102"],
+          "tools_required": ["file.write"],
+          "paths_affected": ["mcp-servers/time-lookup/package.json"],
+          "verification_type": "unit"
+        },
+        {
+          "step_id": "step-103",
+          "order": 3,
+          "action": "Install dependencies via npm install in mcp-servers/time-lookup/.",
+          "description": "Install MCP SDK and any required dependencies.",
+          "criteria_ids": ["crit-102"],
+          "tools_required": ["bash.run"],
+          "paths_affected": ["mcp-servers/time-lookup/node_modules/"],
+          "verification_type": "unit"
+        },
+        {
+          "step_id": "step-104",
+          "order": 4,
+          "action": "Create mcp-servers/time-lookup/test.js that invokes the tool and validates the response schema.",
+          "description": "Write test that verifies the current_time tool returns valid ISO 8601 UTC string.",
+          "criteria_ids": ["crit-101", "crit-103"],
+          "tools_required": ["file.write"],
+          "paths_affected": ["mcp-servers/time-lookup/test.js"],
+          "verification_type": "unit"
+        },
+        {
+          "step_id": "step-105",
+          "order": 5,
+          "action": "Run test and capture output. Verify tool responds via stdio transport.",
+          "description": "Execute integration test proving MCP tool server works end-to-end.",
+          "criteria_ids": ["crit-103", "crit-104"],
+          "tools_required": ["bash.run"],
+          "paths_affected": [],
+          "verification_type": "integration"
+        }
+      ],
+      "acceptance_criteria": [
+        {
+          "criteria_id": "crit-101",
+          "description": "MCP tool server exposes a 'current_time' tool that returns a valid ISO 8601 UTC timestamp.",
+          "required": true
+        },
+        {
+          "criteria_id": "crit-102",
+          "description": "Package manifest exists with correct MCP SDK dependency.",
+          "required": true
+        },
+        {
+          "criteria_id": "crit-103",
+          "description": "Unit and integration tests pass for the current_time tool.",
+          "required": true
+        },
+        {
+          "criteria_id": "crit-104",
+          "description": "MCP tool server communicates correctly over stdio transport.",
+          "required": true
+        }
+      ],
+      "verification_requirements": {
+        "minimum_ladder": ["unit", "integration"],
+        "freshness_required": false
+      }
+    },
+
+    "build_report": {
+      "build_report_id": "cc33dd44-ee55-ff66-7788-990011223344",
+      "correlation_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
+      "execution_plan_id": "bb22cc33-dd44-ee55-ff66-778899001122",
+      "workflow_class": "mcp_tool",
+      "created_at": "2026-03-05T11:20:00Z",
+      "step_results": [
+        {
+          "step_id": "step-101",
+          "criteria_ids": ["crit-101"],
+          "status": "completed",
+          "plan_blocker_detail": null,
+          "evidence_ids": ["ev-f9e8d7c6-0001-diff"],
+          "action_log": [
+            { "timestamp": "2026-03-05T11:10:00Z", "tool": "file.write", "action": "Create mcp-servers/time-lookup/index.js", "result": "success" }
+          ]
+        },
+        {
+          "step_id": "step-102",
+          "criteria_ids": ["crit-102"],
+          "status": "completed",
+          "plan_blocker_detail": null,
+          "evidence_ids": ["ev-f9e8d7c6-0002-diff"],
+          "action_log": [
+            { "timestamp": "2026-03-05T11:11:00Z", "tool": "file.write", "action": "Create mcp-servers/time-lookup/package.json", "result": "success" }
+          ]
+        },
+        {
+          "step_id": "step-103",
+          "criteria_ids": ["crit-102"],
+          "status": "completed",
+          "plan_blocker_detail": null,
+          "evidence_ids": ["ev-f9e8d7c6-0003-clog"],
+          "action_log": [
+            { "timestamp": "2026-03-05T11:12:00Z", "tool": "bash.run", "action": "npm install in mcp-servers/time-lookup/", "result": "success" }
+          ]
+        },
+        {
+          "step_id": "step-104",
+          "criteria_ids": ["crit-101", "crit-103"],
+          "status": "completed",
+          "plan_blocker_detail": null,
+          "evidence_ids": ["ev-f9e8d7c6-0004-diff"],
+          "action_log": [
+            { "timestamp": "2026-03-05T11:13:00Z", "tool": "file.write", "action": "Create mcp-servers/time-lookup/test.js", "result": "success" }
+          ]
+        },
+        {
+          "step_id": "step-105",
+          "criteria_ids": ["crit-103", "crit-104"],
+          "status": "completed",
+          "plan_blocker_detail": null,
+          "evidence_ids": ["ev-f9e8d7c6-0005-tlog", "ev-f9e8d7c6-0006-clog", "ev-f9e8d7c6-0007-atrc"],
+          "action_log": [
+            { "timestamp": "2026-03-05T11:15:00Z", "tool": "bash.run", "action": "Run integration test via stdio", "result": "success" }
+          ]
+        }
+      ],
+      "evidence_map": {
+        "crit-101": ["ev-f9e8d7c6-0001-diff", "ev-f9e8d7c6-0004-diff", "ev-f9e8d7c6-0005-tlog"],
+        "crit-102": ["ev-f9e8d7c6-0002-diff", "ev-f9e8d7c6-0003-clog"],
+        "crit-103": ["ev-f9e8d7c6-0004-diff", "ev-f9e8d7c6-0005-tlog", "ev-f9e8d7c6-0006-clog"],
+        "crit-104": ["ev-f9e8d7c6-0007-atrc"]
+      },
+      "status": "complete"
+    },
+
+    "evidence_records": [
+      {
+        "evidence_id": "ev-f9e8d7c6-0001-diff",
+        "correlation_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
+        "evidence_type": "diff",
+        "path": "evidence/f9e8d7c6-b5a4-3210-fedc-ba9876543210/ev-f9e8d7c6-0001-diff.diff",
+        "content_hash": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
+        "produced_by": "Builder",
+        "produced_at": "2026-03-05T11:10:00Z",
+        "size_bytes": 890
+      },
+      {
+        "evidence_id": "ev-f9e8d7c6-0002-diff",
+        "correlation_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
+        "evidence_type": "diff",
+        "path": "evidence/f9e8d7c6-b5a4-3210-fedc-ba9876543210/ev-f9e8d7c6-0002-diff.diff",
+        "content_hash": "2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3",
+        "produced_by": "Builder",
+        "produced_at": "2026-03-05T11:11:00Z",
+        "size_bytes": 156
+      },
+      {
+        "evidence_id": "ev-f9e8d7c6-0003-clog",
+        "correlation_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
+        "evidence_type": "command_log",
+        "path": "evidence/f9e8d7c6-b5a4-3210-fedc-ba9876543210/ev-f9e8d7c6-0003-clog.json",
+        "content_hash": "3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4",
+        "produced_by": "Builder",
+        "produced_at": "2026-03-05T11:12:00Z",
+        "size_bytes": 340
+      },
+      {
+        "evidence_id": "ev-f9e8d7c6-0004-diff",
+        "correlation_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
+        "evidence_type": "diff",
+        "path": "evidence/f9e8d7c6-b5a4-3210-fedc-ba9876543210/ev-f9e8d7c6-0004-diff.diff",
+        "content_hash": "4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5",
+        "produced_by": "Builder",
+        "produced_at": "2026-03-05T11:13:00Z",
+        "size_bytes": 478
+      },
+      {
+        "evidence_id": "ev-f9e8d7c6-0005-tlog",
+        "correlation_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
+        "evidence_type": "test_log",
+        "path": "evidence/f9e8d7c6-b5a4-3210-fedc-ba9876543210/ev-f9e8d7c6-0005-tlog.log",
+        "content_hash": "5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6",
+        "produced_by": "Builder",
+        "produced_at": "2026-03-05T11:15:00Z",
+        "size_bytes": 2048
+      },
+      {
+        "evidence_id": "ev-f9e8d7c6-0006-clog",
+        "correlation_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
+        "evidence_type": "command_log",
+        "path": "evidence/f9e8d7c6-b5a4-3210-fedc-ba9876543210/ev-f9e8d7c6-0006-clog.json",
+        "content_hash": "6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7",
+        "produced_by": "Builder",
+        "produced_at": "2026-03-05T11:15:30Z",
+        "size_bytes": 512
+      },
+      {
+        "evidence_id": "ev-f9e8d7c6-0007-atrc",
+        "correlation_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
+        "evidence_type": "api_trace",
+        "path": "evidence/f9e8d7c6-b5a4-3210-fedc-ba9876543210/ev-f9e8d7c6-0007-atrc.json",
+        "content_hash": "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8",
+        "produced_by": "Builder",
+        "produced_at": "2026-03-05T11:16:00Z",
+        "size_bytes": 1280
+      }
+    ],
+
+    "verification_artifact": {
+      "verification_id": "dd44ee55-ff66-7788-9900-112233445566",
+      "correlation_id": "f9e8d7c6-b5a4-3210-fedc-ba9876543210",
+      "execution_plan_id": "bb22cc33-dd44-ee55-ff66-778899001122",
+      "build_report_id": "cc33dd44-ee55-ff66-7788-990011223344",
+      "workflow_class": "mcp_tool",
+      "created_at": "2026-03-05T11:25:00Z",
+      "overall_status": "pass",
+      "criteria_results": [
+        {
+          "criteria_id": "crit-101",
+          "status": "pass",
+          "evidence_ids": ["ev-f9e8d7c6-0001-diff", "ev-f9e8d7c6-0004-diff", "ev-f9e8d7c6-0005-tlog"],
+          "rationale": "MCP tool server created with current_time tool. Test confirms valid ISO 8601 UTC output.",
+          "required": true,
+          "verification_type_used": "unit"
+        },
+        {
+          "criteria_id": "crit-102",
+          "status": "pass",
+          "evidence_ids": ["ev-f9e8d7c6-0002-diff", "ev-f9e8d7c6-0003-clog"],
+          "rationale": "package.json created with @modelcontextprotocol/sdk dependency. npm install succeeded.",
+          "required": true,
+          "verification_type_used": "unit"
+        },
+        {
+          "criteria_id": "crit-103",
+          "status": "pass",
+          "evidence_ids": ["ev-f9e8d7c6-0004-diff", "ev-f9e8d7c6-0005-tlog", "ev-f9e8d7c6-0006-clog"],
+          "rationale": "Test file created and executed. All tests passed with exit code 0.",
+          "required": true,
+          "verification_type_used": "integration"
+        },
+        {
+          "criteria_id": "crit-104",
+          "status": "pass",
+          "evidence_ids": ["ev-f9e8d7c6-0007-atrc"],
+          "rationale": "API trace confirms MCP tool server responded correctly via stdio transport with valid JSON-RPC.",
+          "required": true,
+          "verification_type_used": "integration"
+        }
+      ],
+      "freshness_results": {
+        "freshness_required": false,
+        "checks_performed": [],
+        "all_fresh": true
+      },
+      "ladder_compliance": {
+        "required_ladder": ["unit", "integration"],
+        "executed_ladder": ["unit", "integration"],
+        "compliant": true
+      },
+      "fail_closed_enforced": true,
+      "warn_rationale": null,
+      "council_override": null,
+      "artifact_hash": "8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9"
+    }
+  },
+
+  "conformance_checks": {
+    "description": "Checks that this golden path must satisfy.",
+    "schema_conformance": "All 4 artifacts validate against their respective JSON Schema.",
+    "evidence_trace": "Every evidence_id in evidence_map and criteria_results has a matching evidence_record.",
+    "criteria_trace": "Every criteria_id in acceptance_criteria appears in evidence_map and criteria_results.",
+    "gate_sequence": "State transitions match routing_policy.classes.mcp_tool.normal_flow.",
+    "ladder_compliance": "executed_ladder matches workflow_taxonomy.classes.mcp_tool.verification_ladder.",
+    "fail_closed": "fail_closed_enforced=true, overall_status=pass only because all required criteria are pass."
+  }
+}

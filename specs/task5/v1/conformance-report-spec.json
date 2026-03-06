@@ -1,0 +1,157 @@
+{
+  "title": "Conformance Report Spec v1",
+  "version": "1.0.0",
+  "description": "Defines what a conformance report must contain to certify that a golden path is valid. Used by the validator and any future conformance tooling.",
+
+  "report_structure": {
+    "required_fields": [
+      {
+        "field": "report_id",
+        "type": "uuid",
+        "description": "Unique identifier for this conformance report."
+      },
+      {
+        "field": "golden_path_id",
+        "type": "string",
+        "description": "Identifier of the golden path being validated (e.g., 'code_change', 'mcp_tool')."
+      },
+      {
+        "field": "workflow_class",
+        "type": "string",
+        "description": "The workflow class of the golden path."
+      },
+      {
+        "field": "validated_at",
+        "type": "date-time",
+        "description": "Timestamp of conformance validation."
+      },
+      {
+        "field": "overall_result",
+        "type": "string",
+        "enum": ["conformant", "non_conformant"],
+        "description": "Whether the golden path passes all conformance checks."
+      },
+      {
+        "field": "check_results",
+        "type": "array",
+        "description": "Individual check results."
+      }
+    ]
+  },
+
+  "conformance_checks": {
+    "description": "The set of checks that must all pass for a golden path to be conformant.",
+    "checks": [
+      {
+        "check_id": "CC-001",
+        "name": "Schema Conformance",
+        "description": "Every artifact instance in the golden path validates against its JSON Schema.",
+        "artifacts_checked": ["ResearchReport", "ExecutionPlan", "BuildReport", "VerificationArtifact"],
+        "pass_condition": "All artifacts pass schema validation with zero errors.",
+        "fail_action": "List all schema validation errors per artifact."
+      },
+      {
+        "check_id": "CC-002",
+        "name": "Evidence Trace Completeness",
+        "description": "Every evidence_id referenced in BuildReport.evidence_map and VerificationArtifact.criteria_results has a corresponding evidence_record in the golden path.",
+        "pass_condition": "Zero unresolved evidence_ids.",
+        "fail_action": "List all unresolved evidence_ids and their reference location."
+      },
+      {
+        "check_id": "CC-003",
+        "name": "Criteria Trace Completeness",
+        "description": "Every criteria_id in ExecutionPlan.acceptance_criteria appears in both BuildReport.evidence_map and VerificationArtifact.criteria_results.",
+        "pass_condition": "Zero missing criteria_ids in either the build report or verification artifact.",
+        "fail_action": "List criteria_ids missing from evidence_map and/or criteria_results."
+      },
+      {
+        "check_id": "CC-004",
+        "name": "State Transition Conformance",
+        "description": "The golden path state_trace.transitions match the routing_policy.classes[workflow_class].normal_flow.",
+        "pass_condition": "State sequence extracted from transitions matches normal_flow exactly.",
+        "fail_action": "Show expected vs actual state sequence."
+      },
+      {
+        "check_id": "CC-005",
+        "name": "Gate Sequence Conformance",
+        "description": "Gates fire at the correct states per gate-sequence.json.",
+        "pass_condition": "Each gate referenced in state_trace fires at its defined fires_at_state with pass routing.",
+        "fail_action": "List gate mismatches."
+      },
+      {
+        "check_id": "CC-006",
+        "name": "Ladder Compliance",
+        "description": "VerificationArtifact.ladder_compliance.required_ladder matches workflow_taxonomy.classes[workflow_class].verification_ladder, and compliant is true.",
+        "pass_condition": "required_ladder matches taxonomy, executed_ladder covers required_ladder, compliant is true.",
+        "fail_action": "Show ladder mismatch details."
+      },
+      {
+        "check_id": "CC-007",
+        "name": "Freshness Compliance",
+        "description": "Freshness results are consistent with ExecutionPlan.verification_requirements.freshness_required.",
+        "pass_condition": "If freshness_required is false, freshness_results.freshness_required is false. If true, all checks performed and all_fresh is true.",
+        "fail_action": "Show freshness inconsistency."
+      },
+      {
+        "check_id": "CC-008",
+        "name": "Fail-Closed Integrity",
+        "description": "fail_closed_enforced is true. overall_status is pass only if all required criteria_results are pass.",
+        "pass_condition": "fail_closed_enforced=true AND (all required criteria pass => overall pass).",
+        "fail_action": "Show fail-closed violation: which required criterion is non-pass while overall is pass."
+      },
+      {
+        "check_id": "CC-009",
+        "name": "Correlation ID Consistency",
+        "description": "All artifacts in the golden path share the same correlation_id.",
+        "pass_condition": "ResearchReport, ExecutionPlan, BuildReport, VerificationArtifact, and all evidence_records have the same correlation_id.",
+        "fail_action": "List artifacts with mismatched correlation_id."
+      },
+      {
+        "check_id": "CC-010",
+        "name": "Artifact Reference Chain",
+        "description": "ExecutionPlan.research_report_id matches ResearchReport.research_report_id. BuildReport.execution_plan_id matches ExecutionPlan.execution_plan_id. VerificationArtifact references correct plan and build report IDs.",
+        "pass_condition": "All cross-artifact ID references resolve correctly.",
+        "fail_action": "List broken references."
+      },
+      {
+        "check_id": "CC-011",
+        "name": "Evidence Record Format",
+        "description": "Every evidence_record has all required fields per evidence-registry.json evidence_record spec.",
+        "pass_condition": "All evidence records have evidence_id, correlation_id, evidence_type, path, content_hash, produced_by, produced_at, size_bytes.",
+        "fail_action": "List evidence records with missing fields."
+      },
+      {
+        "check_id": "CC-012",
+        "name": "Evidence Path Format",
+        "description": "Every evidence_record.path follows the canonical path format from evidence-registry.json.",
+        "pass_condition": "All paths match pattern: evidence/<correlation_id>/<evidence_id><extension>.",
+        "fail_action": "List evidence records with non-canonical paths."
+      },
+      {
+        "check_id": "CC-013",
+        "name": "Deterministic Artifact Hash",
+        "description": "VerificationArtifact.artifact_hash is present and non-empty.",
+        "pass_condition": "artifact_hash is a non-empty hex string.",
+        "fail_action": "Flag missing or malformed artifact_hash."
+      }
+    ]
+  },
+
+  "conformance_invariants": [
+    {
+      "id": "CI-001",
+      "rule": "A golden path cannot be conformant if any CC check fails.",
+      "enforced_by": "validator"
+    },
+    {
+      "id": "CI-002",
+      "rule": "Conformance checks are deterministic: same golden path always produces the same result.",
+      "enforced_by": "validator"
+    },
+    {
+      "id": "CI-003",
+      "rule": "Golden paths are the first e2e conformance tests. Any spec change that breaks a golden path must be resolved before merge.",
+      "enforced_by": "CI"
+    }
+  ]
+}

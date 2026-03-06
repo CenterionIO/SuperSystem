@@ -1,0 +1,304 @@
+{
+  "title": "Golden Path: code_change",
+  "version": "1.0.0",
+  "description": "Complete end-to-end trace of a code_change workflow: add a health-check endpoint. Every artifact conforms to its schema, every evidence_id resolves, every criteria_id traces through the full pipeline.",
+
+  "workflow_metadata": {
+    "correlation_id": "c7a1b2d3-e4f5-6789-abcd-ef0123456789",
+    "workflow_class": "code_change",
+    "autonomy_mode": "approve_final",
+    "risk_tier": "medium",
+    "goal": "Add a /healthz endpoint that returns HTTP 200 with JSON {\"status\":\"ok\"}."
+  },
+
+  "state_trace": {
+    "description": "Ordered state transitions matching routing_policy.classes.code_change.normal_flow.",
+    "transitions": [
+      { "from": "idle",            "to": "classifying",     "trigger": "User submits request via Operator",     "gate": null },
+      { "from": "classifying",     "to": "researching",     "trigger": "workflow_class=code_change requires research", "gate": null },
+      { "from": "researching",     "to": "research_review", "trigger": "ResearchReport produced",               "gate": "G-001" },
+      { "from": "research_review", "to": "planning",        "trigger": "G-001 pass",                            "gate": null },
+      { "from": "planning",        "to": "plan_review",     "trigger": "ExecutionPlan produced",                 "gate": "G-002" },
+      { "from": "plan_review",     "to": "building",        "trigger": "G-002 pass",                            "gate": null },
+      { "from": "building",        "to": "build_review",    "trigger": "BuildReport produced",                  "gate": "G-003" },
+      { "from": "build_review",    "to": "complete",        "trigger": "G-003 pass",                            "gate": null }
+    ]
+  },
+
+  "artifacts": {
+    "research_report": {
+      "research_report_id": "d1e2f3a4-b5c6-7890-1234-567890abcdef",
+      "correlation_id": "c7a1b2d3-e4f5-6789-abcd-ef0123456789",
+      "workflow_class": "code_change",
+      "created_at": "2026-03-05T10:00:00Z",
+      "findings": [
+        {
+          "finding_id": "f-001",
+          "claim": "Express.js supports app.get() route registration for health-check endpoints.",
+          "confidence": "high",
+          "sources": ["https://expressjs.com/en/starter/hello-world.html"],
+          "freshness_checked_at": null
+        },
+        {
+          "finding_id": "f-002",
+          "claim": "The project uses Express.js 4.x with routes defined in src/routes/.",
+          "confidence": "high",
+          "sources": ["file://src/package.json", "file://src/routes/index.js"],
+          "freshness_checked_at": null
+        }
+      ],
+      "confidence": "high",
+      "freshness": {
+        "policy_applied": true,
+        "all_time_sensitive_checked": true
+      },
+      "sources": [
+        "https://expressjs.com/en/starter/hello-world.html",
+        "file://src/package.json",
+        "file://src/routes/index.js"
+      ],
+      "gaps": []
+    },
+
+    "execution_plan": {
+      "execution_plan_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "correlation_id": "c7a1b2d3-e4f5-6789-abcd-ef0123456789",
+      "workflow_class": "code_change",
+      "version": 1,
+      "created_at": "2026-03-05T10:05:00Z",
+      "research_report_id": "d1e2f3a4-b5c6-7890-1234-567890abcdef",
+      "steps": [
+        {
+          "step_id": "step-001",
+          "order": 1,
+          "action": "Create src/routes/healthz.js with GET /healthz returning {\"status\":\"ok\"}.",
+          "description": "Add the health-check route handler file.",
+          "criteria_ids": ["crit-001"],
+          "tools_required": ["file.write"],
+          "paths_affected": ["src/routes/healthz.js"],
+          "verification_type": "unit"
+        },
+        {
+          "step_id": "step-002",
+          "order": 2,
+          "action": "Register the /healthz route in src/app.js.",
+          "description": "Import and mount the health-check route in the Express app.",
+          "criteria_ids": ["crit-002"],
+          "tools_required": ["file.write"],
+          "paths_affected": ["src/app.js"],
+          "verification_type": "integration"
+        },
+        {
+          "step_id": "step-003",
+          "order": 3,
+          "action": "Add unit test in tests/healthz.test.js verifying GET /healthz returns 200 with {\"status\":\"ok\"}.",
+          "description": "Write test coverage for the new endpoint.",
+          "criteria_ids": ["crit-001", "crit-003"],
+          "tools_required": ["file.write", "bash.run"],
+          "paths_affected": ["tests/healthz.test.js"],
+          "verification_type": "unit"
+        },
+        {
+          "step_id": "step-004",
+          "order": 4,
+          "action": "Run test suite and capture results.",
+          "description": "Execute npm test and collect test output as evidence.",
+          "criteria_ids": ["crit-003"],
+          "tools_required": ["bash.run"],
+          "paths_affected": [],
+          "verification_type": "integration"
+        }
+      ],
+      "acceptance_criteria": [
+        {
+          "criteria_id": "crit-001",
+          "description": "GET /healthz returns HTTP 200 with JSON body {\"status\":\"ok\"}.",
+          "required": true
+        },
+        {
+          "criteria_id": "crit-002",
+          "description": "Health-check route is registered in the Express app.",
+          "required": true
+        },
+        {
+          "criteria_id": "crit-003",
+          "description": "Unit and integration tests pass for the health-check endpoint.",
+          "required": true
+        }
+      ],
+      "verification_requirements": {
+        "minimum_ladder": ["unit", "integration"],
+        "freshness_required": false
+      }
+    },
+
+    "build_report": {
+      "build_report_id": "b1c2d3e4-f5a6-7890-1234-abcdef567890",
+      "correlation_id": "c7a1b2d3-e4f5-6789-abcd-ef0123456789",
+      "execution_plan_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "workflow_class": "code_change",
+      "created_at": "2026-03-05T10:15:00Z",
+      "step_results": [
+        {
+          "step_id": "step-001",
+          "criteria_ids": ["crit-001"],
+          "status": "completed",
+          "plan_blocker_detail": null,
+          "evidence_ids": ["ev-c7a1b2d3-0001-diff"],
+          "action_log": [
+            { "timestamp": "2026-03-05T10:10:00Z", "tool": "file.write", "action": "Create src/routes/healthz.js", "result": "success" }
+          ]
+        },
+        {
+          "step_id": "step-002",
+          "criteria_ids": ["crit-002"],
+          "status": "completed",
+          "plan_blocker_detail": null,
+          "evidence_ids": ["ev-c7a1b2d3-0002-diff"],
+          "action_log": [
+            { "timestamp": "2026-03-05T10:11:00Z", "tool": "file.write", "action": "Modify src/app.js to register /healthz route", "result": "success" }
+          ]
+        },
+        {
+          "step_id": "step-003",
+          "criteria_ids": ["crit-001", "crit-003"],
+          "status": "completed",
+          "plan_blocker_detail": null,
+          "evidence_ids": ["ev-c7a1b2d3-0003-diff"],
+          "action_log": [
+            { "timestamp": "2026-03-05T10:12:00Z", "tool": "file.write", "action": "Create tests/healthz.test.js", "result": "success" }
+          ]
+        },
+        {
+          "step_id": "step-004",
+          "criteria_ids": ["crit-003"],
+          "status": "completed",
+          "plan_blocker_detail": null,
+          "evidence_ids": ["ev-c7a1b2d3-0004-tlog", "ev-c7a1b2d3-0005-clog"],
+          "action_log": [
+            { "timestamp": "2026-03-05T10:13:00Z", "tool": "bash.run", "action": "npm test", "result": "success" }
+          ]
+        }
+      ],
+      "evidence_map": {
+        "crit-001": ["ev-c7a1b2d3-0001-diff", "ev-c7a1b2d3-0003-diff", "ev-c7a1b2d3-0004-tlog"],
+        "crit-002": ["ev-c7a1b2d3-0002-diff"],
+        "crit-003": ["ev-c7a1b2d3-0003-diff", "ev-c7a1b2d3-0004-tlog", "ev-c7a1b2d3-0005-clog"]
+      },
+      "status": "complete"
+    },
+
+    "evidence_records": [
+      {
+        "evidence_id": "ev-c7a1b2d3-0001-diff",
+        "correlation_id": "c7a1b2d3-e4f5-6789-abcd-ef0123456789",
+        "evidence_type": "diff",
+        "path": "evidence/c7a1b2d3-e4f5-6789-abcd-ef0123456789/ev-c7a1b2d3-0001-diff.diff",
+        "content_hash": "a3f2b1c4d5e6f7089012345678abcdef9012345678abcdef9012345678abcdef",
+        "produced_by": "Builder",
+        "produced_at": "2026-03-05T10:10:00Z",
+        "size_bytes": 245
+      },
+      {
+        "evidence_id": "ev-c7a1b2d3-0002-diff",
+        "correlation_id": "c7a1b2d3-e4f5-6789-abcd-ef0123456789",
+        "evidence_type": "diff",
+        "path": "evidence/c7a1b2d3-e4f5-6789-abcd-ef0123456789/ev-c7a1b2d3-0002-diff.diff",
+        "content_hash": "b4a3c2d1e0f9876543210fedcba9876543210fedcba9876543210fedcba98765",
+        "produced_by": "Builder",
+        "produced_at": "2026-03-05T10:11:00Z",
+        "size_bytes": 189
+      },
+      {
+        "evidence_id": "ev-c7a1b2d3-0003-diff",
+        "correlation_id": "c7a1b2d3-e4f5-6789-abcd-ef0123456789",
+        "evidence_type": "diff",
+        "path": "evidence/c7a1b2d3-e4f5-6789-abcd-ef0123456789/ev-c7a1b2d3-0003-diff.diff",
+        "content_hash": "c5b4a3d2e1f0987654321fedcba0987654321fedcba0987654321fedcba09876",
+        "produced_by": "Builder",
+        "produced_at": "2026-03-05T10:12:00Z",
+        "size_bytes": 312
+      },
+      {
+        "evidence_id": "ev-c7a1b2d3-0004-tlog",
+        "correlation_id": "c7a1b2d3-e4f5-6789-abcd-ef0123456789",
+        "evidence_type": "test_log",
+        "path": "evidence/c7a1b2d3-e4f5-6789-abcd-ef0123456789/ev-c7a1b2d3-0004-tlog.log",
+        "content_hash": "d6c5b4a3e2f1098765432fedcba1098765432fedcba1098765432fedcba10987",
+        "produced_by": "Builder",
+        "produced_at": "2026-03-05T10:13:00Z",
+        "size_bytes": 1024
+      },
+      {
+        "evidence_id": "ev-c7a1b2d3-0005-clog",
+        "correlation_id": "c7a1b2d3-e4f5-6789-abcd-ef0123456789",
+        "evidence_type": "command_log",
+        "path": "evidence/c7a1b2d3-e4f5-6789-abcd-ef0123456789/ev-c7a1b2d3-0005-clog.json",
+        "content_hash": "e7d6c5b4a3f2109876543fedcba2109876543fedcba2109876543fedcba21098",
+        "produced_by": "Builder",
+        "produced_at": "2026-03-05T10:13:30Z",
+        "size_bytes": 512
+      }
+    ],
+
+    "verification_artifact": {
+      "verification_id": "e1f2a3b4-c5d6-7890-ef12-abcdef345678",
+      "correlation_id": "c7a1b2d3-e4f5-6789-abcd-ef0123456789",
+      "execution_plan_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "build_report_id": "b1c2d3e4-f5a6-7890-1234-abcdef567890",
+      "workflow_class": "code_change",
+      "created_at": "2026-03-05T10:20:00Z",
+      "overall_status": "pass",
+      "criteria_results": [
+        {
+          "criteria_id": "crit-001",
+          "status": "pass",
+          "evidence_ids": ["ev-c7a1b2d3-0001-diff", "ev-c7a1b2d3-0003-diff", "ev-c7a1b2d3-0004-tlog"],
+          "rationale": "Health-check endpoint created, tested, and confirmed to return HTTP 200 with {\"status\":\"ok\"}.",
+          "required": true,
+          "verification_type_used": "unit"
+        },
+        {
+          "criteria_id": "crit-002",
+          "status": "pass",
+          "evidence_ids": ["ev-c7a1b2d3-0002-diff"],
+          "rationale": "Route registered in src/app.js. Diff confirms import and app.use() call.",
+          "required": true,
+          "verification_type_used": "integration"
+        },
+        {
+          "criteria_id": "crit-003",
+          "status": "pass",
+          "evidence_ids": ["ev-c7a1b2d3-0003-diff", "ev-c7a1b2d3-0004-tlog", "ev-c7a1b2d3-0005-clog"],
+          "rationale": "Test file created, npm test ran successfully, all tests passed.",
+          "required": true,
+          "verification_type_used": "integration"
+        }
+      ],
+      "freshness_results": {
+        "freshness_required": false,
+        "checks_performed": [],
+        "all_fresh": true
+      },
+      "ladder_compliance": {
+        "required_ladder": ["unit", "integration"],
+        "executed_ladder": ["unit", "integration"],
+        "compliant": true
+      },
+      "fail_closed_enforced": true,
+      "warn_rationale": null,
+      "council_override": null,
+      "artifact_hash": "f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0a9f8"
+    }
+  },
+
+  "conformance_checks": {
+    "description": "Checks that this golden path must satisfy.",
+    "schema_conformance": "All 4 artifacts validate against their respective JSON Schema.",
+    "evidence_trace": "Every evidence_id in evidence_map and criteria_results has a matching evidence_record.",
+    "criteria_trace": "Every criteria_id in acceptance_criteria appears in evidence_map and criteria_results.",
+    "gate_sequence": "State transitions match routing_policy.classes.code_change.normal_flow.",
+    "ladder_compliance": "executed_ladder matches workflow_taxonomy.classes.code_change.verification_ladder.",
+    "fail_closed": "fail_closed_enforced=true, overall_status=pass only because all required criteria are pass."
+  }
+}
