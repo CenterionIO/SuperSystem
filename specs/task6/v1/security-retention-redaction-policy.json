@@ -8,7 +8,7 @@
     "trace.jsonl",
     "manifest.json"
   ],
-  "redaction_levels": ["none", "partial", "full"],
+  "redaction_levels": ["none", "standard", "strict"],
   "pii_field_patterns": [
     "email",
     "phone",
@@ -26,9 +26,7 @@
     "private_key"
   ],
   "audit_log_scope": {
-    "immutable": true,
-    "append_only": true,
-    "required_fields": ["timestamp", "actor", "action", "resource", "outcome"],
-    "retention_days": 90
+    "include_events": ["state_transition", "escalation", "approval", "rejection", "evidence_collected", "proof_generated"],
+    "exclude_fields": ["password", "token", "secret", "api_key", "private_key", "credential"]
   }
 }

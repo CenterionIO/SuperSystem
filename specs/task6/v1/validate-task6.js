@@ -158,19 +158,22 @@ function gateS67RetentionRedactionPolicy() {
     }
   }
 
-  // audit_log_scope must be immutable and append-only
+  // audit_log_scope must have include_events and exclude_fields
   if (doc.audit_log_scope) {
-    if (doc.audit_log_scope.immutable !== true) {
-      errors.push('S6-7 audit_log_scope.immutable must be true');
+    if (!Array.isArray(doc.audit_log_scope.include_events) || doc.audit_log_scope.include_events.length === 0) {
+      errors.push('S6-7 audit_log_scope.include_events must be a non-empty array');
     }
-    if (doc.audit_log_scope.append_only !== true) {
-      errors.push('S6-7 audit_log_scope.append_only must be true');
+    if (!Array.isArray(doc.audit_log_scope.exclude_fields) || doc.audit_log_scope.exclude_fields.length === 0) {
+      errors.push('S6-7 audit_log_scope.exclude_fields must be a non-empty array');
     }
   }
 
-  // retention_days must match between top-level and audit_log_scope
-  if (doc.retention_days !== doc.audit_log_scope?.retention_days) {
-    errors.push('S6-7 retention_days mismatch between top-level and audit_log_scope');
+  // secrets_field_patterns must be a subset of exclude_fields
+  const excludeSet = new Set(doc.audit_log_scope?.exclude_fields || []);
+  for (const pat of doc.secrets_field_patterns || []) {
+    if (!excludeSet.has(pat)) {
+      errors.push(`S6-7 secrets pattern '${pat}' not in audit_log_scope.exclude_fields`);
+    }
   }
 }
 
