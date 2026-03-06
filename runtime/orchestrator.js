@@ -96,8 +96,60 @@ class Orchestrator {
       );
     }
 
+    // Emit trace.jsonl
+    const traceLines = runState.transitions.map(t => JSON.stringify(t));
+    fs.writeFileSync(path.join(runDir, 'trace.jsonl'), traceLines.join('\n') + '\n', 'utf8');
+
+    // Emit proof.json (fail-closed)
+    let proofVerdict = 'fail';
+    const vaPath = path.join(runDir, 'VerificationArtifact.json');
+    const erPath = path.join(runDir, 'evidence_records.json');
+    if (fs.existsSync(vaPath) && fs.existsSync(erPath)) {
+      const va = JSON.parse(fs.readFileSync(vaPath, 'utf8'));
+      const ers = JSON.parse(fs.readFileSync(erPath, 'utf8'));
+      const evIds = new Set(ers.map(r => r.evidence_id));
+      const allResolved = (va.criteria_results || []).every(cr =>
+        (cr.evidence_ids || []).every(id => evIds.has(id))
+      );
+      proofVerdict = (va.overall_status === 'pass' && allResolved) ? 'pass' : 'fail';
+      fs.writeFileSync(path.join(runDir, 'proof.json'), JSON.stringify({
+        correlation_id: correlationId,
+        workflow_class: workflowClass,
+        verdict: proofVerdict,
+        created_at: new Date().toISOString(),
+        evidence_count: ers.length,
+        criteria_count: (va.criteria_results || []).length,
+        all_evidence_resolved: allResolved,
+      }, null, 2), 'utf8');
+    }
+
+    // Emit manifest.json
+    const manifestArtifacts = ['VerificationArtifact.json', 'evidence_records.json', 'proof.json', 'trace.jsonl', 'run_state.json'];
+    const manifestEntries = [];
+    for (const file of manifestArtifacts) {
+      const filePath = path.join(runDir, file);
+      if (fs.existsSync(filePath)) {
+        const content = fs.readFileSync(filePath, 'utf8');
+        manifestEntries.push({
+          file,
+          sha256: crypto.createHash('sha256').update(content).digest('hex'),
+          size_bytes: Buffer.byteLength(content, 'utf8'),
+        });
+      }
+    }
+    fs.writeFileSync(path.join(runDir, 'manifest.json'), JSON.stringify({
+      correlation_id: correlationId,
+      workflow_class: workflowClass,
+      created_at: new Date().toISOString(),
+      artifacts: manifestEntries,
+    }, null, 2), 'utf8');
+
+    // Fail-closed: proof failure downgrades run status
+    const flowStatus = runState.current_state === 'complete' ? 'pass' : (runState.current_state === 'escalation' ? 'blocked' : 'fail');
+    const finalStatus = (flowStatus === 'pass' && proofVerdict !== 'pass') ? 'fail' : flowStatus;
+
     return {
-      status: runState.current_state === 'complete' ? 'pass' : (runState.current_state === 'escalation' ? 'blocked' : 'fail'),
+      status: finalStatus,
       correlation_id: correlationId,
       final_state: runState.current_state,
       transitions: runState.transitions,
