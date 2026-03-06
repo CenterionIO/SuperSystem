@@ -264,6 +264,8 @@ for (const { wf, runDir } of runDirs) {
     }
     if (!bundle.run_id || typeof bundle.run_id !== 'string') {
       errors.push(`RO-9 [${wf}]: bundle run_id missing`);
+    } else if (bundle.run_id !== path.basename(runDir)) {
+      errors.push(`RO-9 [${wf}]: bundle run_id (${bundle.run_id}) must match dir basename (${path.basename(runDir)})`);
     }
     if (!bundle.artifacts || typeof bundle.artifacts !== 'object') {
       errors.push(`RO-9 [${wf}]: bundle artifacts missing`);
