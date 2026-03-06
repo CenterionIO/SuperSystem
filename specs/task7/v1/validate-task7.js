@@ -129,8 +129,33 @@ function gateS83Replayability() {
   if (!Array.isArray(doc.required_artifacts) || doc.required_artifacts.length === 0) {
     errors.push('S8-3 required_artifacts must be a non-empty array');
   }
-  if (doc.determinism_requirements && !doc.determinism_requirements.hash_algorithm) {
-    errors.push('S8-3 determinism_requirements missing hash_algorithm');
+
+  const dr = doc.determinism_requirements || {};
+  requireExactKeys('S8-3 determinism_requirements', dr, [
+    'hash_algorithm',
+    'evidence_ids',
+    'state_transitions',
+    'timestamp_handling',
+    'random_seed',
+    'stable_gate_outcomes_given_same_inputs',
+  ]);
+  if (dr.hash_algorithm !== 'sha256') {
+    errors.push('S8-3 determinism_requirements.hash_algorithm must be "sha256"');
+  }
+  if (dr.evidence_ids !== 'deterministic_from_content') {
+    errors.push('S8-3 determinism_requirements.evidence_ids must be "deterministic_from_content"');
+  }
+  if (dr.state_transitions !== 'deterministic') {
+    errors.push('S8-3 determinism_requirements.state_transitions must be "deterministic"');
+  }
+  if (dr.timestamp_handling !== 'capture_not_replay') {
+    errors.push('S8-3 determinism_requirements.timestamp_handling must be "capture_not_replay"');
+  }
+  if (dr.random_seed !== 'not_used') {
+    errors.push('S8-3 determinism_requirements.random_seed must be "not_used"');
+  }
+  if (dr.stable_gate_outcomes_given_same_inputs !== true) {
+    errors.push('S8-3 determinism_requirements.stable_gate_outcomes_given_same_inputs must be true');
   }
 }
 
