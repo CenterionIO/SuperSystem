@@ -1,0 +1,98 @@
+{
+  "policy_type": "permissions_policy",
+  "version": "v1",
+  "default_deny": true,
+  "roles": {
+    "Operator": {
+      "allowed_tools": ["orchestrator.submit_request", "ux.render_status", "ux.render_escalation", "transcribe.fast_path"],
+      "denied_tools": ["orchestrator.route", "planner.author_plan", "builder.execute", "verify.run", "platform.recover"],
+      "path_scope": {
+        "read": ["session/*", "status/*"],
+        "write": ["session/*"]
+      },
+      "network_scope": {
+        "allow": ["user_facing_channels"],
+        "deny": ["external_api", "internal_services"]
+      },
+      "enforced_by": ["tool_allowlist", "network_scope_guard", "runtime_guard"]
+    },
+    "Orchestrator": {
+      "allowed_tools": ["orchestrator.route", "orchestrator.classify", "orchestrator.transition", "planner.request_plan", "research.request", "builder.request_build", "verify.request", "platform.report_error"],
+      "denied_tools": ["planner.author_plan", "builder.execute", "verify.score", "operator.render"],
+      "path_scope": {
+        "read": ["workflow/*", "state/*", "plans/*", "builds/*", "verification/*"],
+        "write": ["workflow/*", "state/*", "routing/*"]
+      },
+      "network_scope": {
+        "allow": ["internal_services"],
+        "deny": ["external_api", "user_facing_channels"]
+      },
+      "enforced_by": ["tool_allowlist", "path_scope_guard", "runtime_guard", "verifier_gate"]
+    },
+    "Planner": {
+      "allowed_tools": ["planner.author_plan", "planner.patch_plan", "research.read_report"],
+      "denied_tools": ["orchestrator.route", "orchestrator.submit_request", "builder.execute", "verify.run", "platform.recover", "orchestrator.classify", "orchestrator.transition"],
+      "path_scope": {
+        "read": ["plans/*", "research/*", "schemas/*"],
+        "write": ["plans/*"]
+      },
+      "network_scope": {
+        "allow": [],
+        "deny": ["external_api", "user_facing_channels"]
+      },
+      "enforced_by": ["tool_allowlist", "path_scope_guard", "runtime_guard", "verifier_gate"]
+    },
+    "Research": {
+      "allowed_tools": ["research.search", "research.analyze", "research.produce_report", "web.fetch", "web.search"],
+      "denied_tools": ["planner.author_plan", "builder.execute", "verify.run", "orchestrator.route", "platform.recover"],
+      "path_scope": {
+        "read": ["research/*", "schemas/*", "sources/*"],
+        "write": ["research/*"]
+      },
+      "network_scope": {
+        "allow": ["approved_external_sources", "web_search"],
+        "deny": ["user_facing_channels"]
+      },
+      "enforced_by": ["tool_allowlist", "network_scope_guard", "runtime_guard", "path_scope_guard"]
+    },
+    "Builder": {
+      "allowed_tools": ["builder.execute", "builder.report", "builder.raise_blocker", "file.read", "file.write", "bash.run"],
+      "denied_tools": ["planner.author_plan", "orchestrator.route", "verify.run", "platform.recover", "orchestrator.classify"],
+      "path_scope": {
+        "read": ["plans/*", "builds/*", "schemas/*", "src/*"],
+        "write": ["builds/*", "src/*"]
+      },
+      "network_scope": {
+        "allow": ["internal_services", "package_registries"],
+        "deny": ["user_facing_channels"]
+      },
+      "enforced_by": ["tool_allowlist", "path_scope_guard", "runtime_guard", "verifier_gate"]
+    },
+    "VerifyMCP": {
+      "allowed_tools": ["verify.run", "verify.score", "verify.freshness_check", "verify.ladder_check", "evidence.read"],
+      "denied_tools": ["planner.author_plan", "builder.execute", "orchestrator.route", "platform.recover"],
+      "path_scope": {
+        "read": ["builds/*", "plans/*", "evidence/*", "schemas/*", "research/*"],
+        "write": ["verification/*"]
+      },
+      "network_scope": {
+        "allow": ["internal_services"],
+        "deny": ["external_api", "user_facing_channels"]
+      },
+      "enforced_by": ["tool_allowlist", "path_scope_guard", "runtime_guard"]
+    },
+    "PlatformRecovery": {
+      "allowed_tools": ["platform.restart", "platform.reconnect", "platform.clear_cache", "platform.health_check"],
+      "denied_tools": ["planner.author_plan", "builder.execute", "verify.run", "orchestrator.route", "orchestrator.classify"],
+      "path_scope": {
+        "read": ["platform/*", "health/*"],
+        "write": ["platform/*", "health/*"]
+      },
+      "network_scope": {
+        "allow": ["internal_services"],
+        "deny": ["external_api", "user_facing_channels"]
+      },
+      "enforced_by": ["tool_allowlist", "runtime_guard", "path_scope_guard"]
+    }
+  }
+}

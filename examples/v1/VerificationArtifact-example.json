@@ -1,0 +1,49 @@
+{
+  "verification_id": "c3d6fa0f-1efb-4819-b201-c02929ab7d91",
+  "correlation_id": "273929c2-7df9-4f4f-94b8-3e911a69331e",
+  "execution_plan_id": "418c1569-9a80-4c2d-bb28-f862afbb10c0",
+  "build_report_id": "fc7f11f7-6a19-4ba3-b107-5bcb07a16b15",
+  "workflow_class": "code_change",
+  "created_at": "2026-03-05T10:20:00Z",
+  "overall_status": "pass",
+  "criteria_results": [
+    {
+      "criteria_id": "ac-001",
+      "status": "pass",
+      "evidence_ids": ["ev-001-file-healthz-ts", "ev-003-app-ts-diff", "ev-005-test-results"],
+      "rationale": "GET /healthz returns 200 with correct JSON shape. Confirmed by integration test output.",
+      "required": true,
+      "verification_type_used": "integration"
+    },
+    {
+      "criteria_id": "ac-002",
+      "status": "pass",
+      "evidence_ids": ["ev-002-async-check"],
+      "rationale": "Handler uses native async/await. No express-async-errors dependency. Code review confirms.",
+      "required": true,
+      "verification_type_used": "unit"
+    },
+    {
+      "criteria_id": "ac-003",
+      "status": "pass",
+      "evidence_ids": ["ev-004-test-file", "ev-005-test-results"],
+      "rationale": "3/3 test cases pass: status code 200, body shape matches, timestamp is valid ISO8601.",
+      "required": true,
+      "verification_type_used": "unit"
+    }
+  ],
+  "freshness_results": {
+    "freshness_required": false,
+    "checks_performed": [],
+    "all_fresh": true
+  },
+  "ladder_compliance": {
+    "required_ladder": ["unit", "integration"],
+    "executed_ladder": ["unit", "integration"],
+    "compliant": true
+  },
+  "fail_closed_enforced": true,
+  "warn_rationale": null,
+  "council_override": null,
+  "artifact_hash": "sha256:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+}

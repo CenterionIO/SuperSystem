@@ -1,0 +1,15 @@
+{
+  "workflow_class": "code_change",
+  "selected_ladder": ["unit", "integration"],
+  "selected_required_checks": ["acceptance_criteria", "plan_build_alignment", "evidence_integrity", "permissions_scope"],
+  "selected_evidence_types": ["diff", "test_log", "command_log", "artifact_hash"],
+  "selected_autonomy_mode": "approve_final",
+  "selected_risk_tier": "medium",
+  "selected_route": {
+    "normal_flow": ["idle", "classifying", "researching", "research_review", "planning", "plan_review", "building", "build_review", "complete"],
+    "verification_fail": "building",
+    "plan_blocker": "planning",
+    "blocked_evidence_route": "blocked_evidence",
+    "escalation_route": "escalation"
+  }
+}

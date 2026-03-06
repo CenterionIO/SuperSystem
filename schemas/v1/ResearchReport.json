@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ResearchReport v1",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "research_report_id",
+    "correlation_id",
+    "workflow_class",
+    "created_at",
+    "findings",
+    "confidence",
+    "freshness",
+    "sources",
+    "gaps"
+  ],
+  "properties": {
+    "research_report_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "workflow_class": {
+      "type": "string",
+      "enum": ["code_change", "mcp_tool", "research_only", "transcription", "ui_change", "ops_fix"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["finding_id", "claim", "confidence", "sources", "freshness_checked_at"],
+        "properties": {
+          "finding_id": { "type": "string" },
+          "claim": { "type": "string" },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"]
+          },
+          "sources": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "freshness_checked_at": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Null only if claim is not time-sensitive. Required for time-sensitive claims."
+          }
+        }
+      }
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"],
+      "description": "Overall report confidence."
+    },
+    "freshness": {
+      "type": "object",
+      "required": ["policy_applied", "all_time_sensitive_checked"],
+      "properties": {
+        "policy_applied": { "type": "boolean" },
+        "all_time_sensitive_checked": { "type": "boolean" }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Aggregate source list."
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["gap_id", "description", "impact"],
+        "properties": {
+          "gap_id": { "type": "string" },
+          "description": { "type": "string" },
+          "impact": {
+            "type": "string",
+            "enum": ["blocking", "degraded", "minor"]
+          }
+        }
+      }
+    }
+  },
+
+  "fieldOwnership": {
+    "/research_report_id":                          { "writtenBy": ["Research"],      "readableBy": ["*"],                "verifiedBy": ["VerifyMCP"] },
+    "/correlation_id":                              { "writtenBy": ["Orchestrator"],  "readableBy": ["*"],                "verifiedBy": ["VerifyMCP"], "echoedBy": [] },
+    "/workflow_class":                              { "writtenBy": ["Orchestrator"],  "readableBy": ["*"],                "verifiedBy": ["VerifyMCP"] },
+    "/created_at":                                  { "writtenBy": ["Research"],      "readableBy": ["*"],                "verifiedBy": ["VerifyMCP"] },
+    "/findings":                                    { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]":                                 { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]/finding_id":                      { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]/claim":                           { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]/confidence":                      { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]/sources":                         { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]/sources/[]":                      { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/findings/[]/freshness_checked_at":            { "writtenBy": ["Research"],      "readableBy": ["VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/confidence":                                  { "writtenBy": ["Research"],      "readableBy": ["Planner", "Orchestrator", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/freshness":                                   { "writtenBy": ["Research"],      "readableBy": ["VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/freshness/policy_applied":                    { "writtenBy": ["Research"],      "readableBy": ["VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/freshness/all_time_sensitive_checked":         { "writtenBy": ["Research"],      "readableBy": ["VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/sources":                                     { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/sources/[]":                                  { "writtenBy": ["Research"],      "readableBy": ["Planner", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/gaps":                                        { "writtenBy": ["Research"],      "readableBy": ["Planner", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/gaps/[]":                                     { "writtenBy": ["Research"],      "readableBy": ["Planner", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/gaps/[]/gap_id":                              { "writtenBy": ["Research"],      "readableBy": ["Planner", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/gaps/[]/description":                         { "writtenBy": ["Research"],      "readableBy": ["Planner", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/gaps/[]/impact":                              { "writtenBy": ["Research"],      "readableBy": ["Planner", "Orchestrator"], "verifiedBy": ["VerifyMCP"] }
+  }
+}

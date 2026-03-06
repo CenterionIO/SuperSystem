@@ -1,0 +1,61 @@
+{
+  "execution_plan_id": "418c1569-9a80-4c2d-bb28-f862afbb10c0",
+  "correlation_id": "273929c2-7df9-4f4f-94b8-3e911a69331e",
+  "workflow_class": "code_change",
+  "version": 1,
+  "created_at": "2026-03-05T10:05:00Z",
+  "research_report_id": "f7a1c2d7-e699-4f21-8416-a4ea3992dca5",
+  "steps": [
+    {
+      "step_id": "s-001",
+      "order": 1,
+      "action": "Add /healthz endpoint to Express router",
+      "description": "Create a new route handler at src/routes/healthz.ts that returns { status: 'ok', timestamp: ISO8601 }",
+      "criteria_ids": ["ac-001", "ac-002"],
+      "tools_required": ["file_write", "file_read"],
+      "paths_affected": ["src/routes/healthz.ts"],
+      "verification_type": "unit"
+    },
+    {
+      "step_id": "s-002",
+      "order": 2,
+      "action": "Register /healthz route in app.ts",
+      "description": "Import and mount the healthz router in src/app.ts",
+      "criteria_ids": ["ac-001"],
+      "tools_required": ["file_edit", "file_read"],
+      "paths_affected": ["src/app.ts"],
+      "verification_type": "integration"
+    },
+    {
+      "step_id": "s-003",
+      "order": 3,
+      "action": "Add unit and integration tests",
+      "description": "Create tests at src/routes/__tests__/healthz.test.ts covering response shape, status code, and timestamp format",
+      "criteria_ids": ["ac-003"],
+      "tools_required": ["file_write", "file_read", "test_runner"],
+      "paths_affected": ["src/routes/__tests__/healthz.test.ts"],
+      "verification_type": "unit"
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criteria_id": "ac-001",
+      "description": "GET /healthz returns 200 with JSON body { status: 'ok', timestamp: <ISO8601> }",
+      "required": true
+    },
+    {
+      "criteria_id": "ac-002",
+      "description": "Handler is async-safe and does not require express-async-errors wrapper",
+      "required": true
+    },
+    {
+      "criteria_id": "ac-003",
+      "description": "Unit and integration tests pass covering response shape, status code, and timestamp format",
+      "required": true
+    }
+  ],
+  "verification_requirements": {
+    "minimum_ladder": ["unit", "integration"],
+    "freshness_required": false
+  }
+}

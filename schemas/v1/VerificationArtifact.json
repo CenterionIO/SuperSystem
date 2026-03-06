@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VerificationArtifact v1",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "verification_id",
+    "correlation_id",
+    "execution_plan_id",
+    "build_report_id",
+    "workflow_class",
+    "created_at",
+    "overall_status",
+    "criteria_results",
+    "freshness_results",
+    "fail_closed_enforced",
+    "artifact_hash"
+  ],
+  "properties": {
+    "verification_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "execution_plan_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "build_report_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "workflow_class": {
+      "type": "string",
+      "enum": ["code_change", "mcp_tool", "research_only", "transcription", "ui_change", "ops_fix"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "overall_status": {
+      "type": "string",
+      "enum": ["pass", "warn", "fail", "blocked"],
+      "description": "Canonical status. Fail-closed: if any required criterion is not pass, overall cannot be pass."
+    },
+    "criteria_results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["criteria_id", "status", "evidence_ids", "rationale", "required"],
+        "properties": {
+          "criteria_id": {
+            "type": "string",
+            "description": "Must match a criteria_id from the ExecutionPlan."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pass", "warn", "fail", "blocked"]
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Evidence from the evidence registry used to evaluate this criterion."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Why this status was assigned."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Echoed from ExecutionPlan acceptance_criteria. If true and not pass, overall is fail or blocked."
+          },
+          "verification_type_used": {
+            "type": "string",
+            "enum": ["unit", "integration", "e2e", "visual", "api", "manual"]
+          }
+        }
+      }
+    },
+    "freshness_results": {
+      "type": "object",
+      "required": ["freshness_required", "checks_performed", "all_fresh"],
+      "properties": {
+        "freshness_required": { "type": "boolean" },
+        "checks_performed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["claim_ref", "checked_at", "fresh"],
+            "properties": {
+              "claim_ref": { "type": "string" },
+              "checked_at": { "type": "string", "format": "date-time" },
+              "fresh": { "type": "boolean" }
+            }
+          }
+        },
+        "all_fresh": { "type": "boolean" }
+      }
+    },
+    "ladder_compliance": {
+      "type": "object",
+      "required": ["required_ladder", "executed_ladder", "compliant"],
+      "properties": {
+        "required_ladder": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "executed_ladder": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "compliant": { "type": "boolean" }
+      }
+    },
+    "fail_closed_enforced": {
+      "type": "boolean",
+      "description": "Must be true. If any required check is missing, overall_status must be blocked."
+    },
+    "warn_rationale": {
+      "type": ["string", "null"],
+      "description": "Required when overall_status is warn. Explains why continuation is acceptable."
+    },
+    "council_override": {
+      "type": ["object", "null"],
+      "properties": {
+        "override_id": { "type": "string" },
+        "rationale": { "type": "string" },
+        "policy_ref": { "type": "string" },
+        "approved_by": { "type": "string" }
+      },
+      "description": "Non-null only if council override was applied. Must reference policy."
+    },
+    "artifact_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the artifact content (excluding this field). Immutability proof."
+    }
+  },
+
+  "fieldOwnership": {
+    "/verification_id":                                        { "writtenBy": ["VerifyMCP"],    "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"] },
+    "/correlation_id":                                         { "writtenBy": ["Orchestrator"], "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"], "echoedBy": ["VerifyMCP"] },
+    "/execution_plan_id":                                      { "writtenBy": ["Orchestrator"], "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"], "echoedBy": ["VerifyMCP"] },
+    "/build_report_id":                                        { "writtenBy": ["Orchestrator"], "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"], "echoedBy": ["VerifyMCP"] },
+    "/workflow_class":                                         { "writtenBy": ["Orchestrator"], "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"], "echoedBy": ["VerifyMCP"] },
+    "/created_at":                                             { "writtenBy": ["VerifyMCP"],    "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"] },
+    "/overall_status":                                         { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator", "Operator"], "verifiedBy": ["VerifyMCP"] },
+    "/criteria_results":                                       { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator", "Operator"], "verifiedBy": ["VerifyMCP"] },
+    "/criteria_results/[]":                                    { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator", "Operator"], "verifiedBy": ["VerifyMCP"] },
+    "/criteria_results/[]/criteria_id":                        { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/criteria_results/[]/status":                             { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator", "Operator"], "verifiedBy": ["VerifyMCP"] },
+    "/criteria_results/[]/evidence_ids":                       { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/criteria_results/[]/evidence_ids/[]":                    { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/criteria_results/[]/rationale":                          { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator", "Operator"], "verifiedBy": ["VerifyMCP"] },
+    "/criteria_results/[]/required":                           { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/criteria_results/[]/verification_type_used":             { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/freshness_results":                                      { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/freshness_results/freshness_required":                   { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/freshness_results/checks_performed":                     { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/freshness_results/checks_performed/[]":                  { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/freshness_results/checks_performed/[]/claim_ref":        { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/freshness_results/checks_performed/[]/checked_at":       { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/freshness_results/checks_performed/[]/fresh":            { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/freshness_results/all_fresh":                            { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/ladder_compliance":                                      { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/ladder_compliance/required_ladder":                      { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/ladder_compliance/required_ladder/[]":                   { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/ladder_compliance/executed_ladder":                      { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/ladder_compliance/executed_ladder/[]":                   { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/ladder_compliance/compliant":                            { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/fail_closed_enforced":                                   { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/warn_rationale":                                         { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator", "Operator"], "verifiedBy": ["VerifyMCP"] },
+    "/council_override":                                       { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator", "Operator"], "verifiedBy": ["VerifyMCP"] },
+    "/council_override/override_id":                           { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/council_override/rationale":                             { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator", "Operator"], "verifiedBy": ["VerifyMCP"] },
+    "/council_override/policy_ref":                            { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/council_override/approved_by":                           { "writtenBy": ["VerifyMCP"],    "readableBy": ["Orchestrator"],             "verifiedBy": ["VerifyMCP"] },
+    "/artifact_hash":                                          { "writtenBy": ["VerifyMCP"],    "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"] }
+  }
+}

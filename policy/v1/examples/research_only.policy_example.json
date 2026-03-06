@@ -1,0 +1,15 @@
+{
+  "workflow_class": "research_only",
+  "selected_ladder": ["freshness"],
+  "selected_required_checks": ["acceptance_criteria", "research_plan_alignment", "freshness", "evidence_integrity"],
+  "selected_evidence_types": ["research_report", "source_references", "freshness_log", "artifact_hash"],
+  "selected_autonomy_mode": "full_auto",
+  "selected_risk_tier": "low",
+  "selected_route": {
+    "normal_flow": ["idle", "classifying", "researching", "research_review", "complete"],
+    "verification_fail": "researching",
+    "plan_blocker": "researching",
+    "blocked_evidence_route": "blocked_evidence",
+    "escalation_route": "escalation"
+  }
+}

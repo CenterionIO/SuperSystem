@@ -1,0 +1,191 @@
+{
+  "title": "Verify MCP Contract v1",
+  "version": "1.0.0",
+  "description": "Canonical contract for the Verify MCP verification authority. Defines inputs, outputs, check types, status taxonomy, fail-closed rules, and resume semantics.",
+
+  "statusTaxonomy": {
+    "values": ["pass", "warn", "fail", "blocked"],
+    "semantics": {
+      "pass": "All required checks satisfied. Workflow may proceed.",
+      "warn": {
+        "required_check": "Treated as blocked unless explicit policy exception exists. Exception must be logged with rationale artifact.",
+        "optional_check": "Workflow may continue. Rationale artifact required explaining why continuation is acceptable."
+      },
+      "fail": "One or more required checks failed with evidence. Workflow cannot proceed. Requires rework or plan_blocker routing.",
+      "blocked": "Required evidence or checks are missing entirely. Workflow cannot proceed until evidence is supplied. Fail-closed default."
+    },
+    "invariant": "No status outside this set is valid. Any unknown status is treated as blocked."
+  },
+
+  "failClosedRules": [
+    {
+      "id": "FC-001",
+      "rule": "Any required acceptance criterion without a corresponding verification result is status: blocked.",
+      "enforced_by": "runtime_guard"
+    },
+    {
+      "id": "FC-002",
+      "rule": "Any required criterion with status warn is treated as blocked unless a policy exception with rationale artifact exists.",
+      "enforced_by": "runtime_guard"
+    },
+    {
+      "id": "FC-003",
+      "rule": "overall_status cannot be pass if any required criterion is not pass.",
+      "enforced_by": "runtime_guard"
+    },
+    {
+      "id": "FC-004",
+      "rule": "fail_closed_enforced must be true on every VerificationArtifact. Artifacts with fail_closed_enforced: false are rejected.",
+      "enforced_by": "runtime_guard"
+    },
+    {
+      "id": "FC-005",
+      "rule": "Freshness check failure on a time-sensitive claim sets that criterion to fail, not warn.",
+      "enforced_by": "runtime_guard"
+    }
+  ],
+
+  "checkTypes": {
+    "unit": {
+      "description": "Isolated function/module-level verification.",
+      "evidence": "Test runner output with pass/fail per test case."
+    },
+    "integration": {
+      "description": "Cross-module or API-level verification.",
+      "evidence": "Test runner output or HTTP response captures."
+    },
+    "e2e": {
+      "description": "Full workflow verification from input to output.",
+      "evidence": "End-to-end test output or workflow trace."
+    },
+    "visual": {
+      "description": "UI rendering or layout verification.",
+      "evidence": "Screenshot comparison or visual diff."
+    },
+    "api": {
+      "description": "External API contract verification.",
+      "evidence": "API response captures with schema validation."
+    },
+    "freshness": {
+      "description": "Time-sensitive claim verification via live lookup.",
+      "evidence": "Timestamped lookup result with source reference.",
+      "mandatory_when": "ExecutionPlan.verification_requirements.freshness_required is true or ResearchReport contains time-sensitive findings."
+    }
+  },
+
+  "verificationLadder": {
+    "description": "Per-workflow-class minimum required check types, in order.",
+    "ladders": {
+      "code_change":    ["unit", "integration"],
+      "mcp_tool":       ["unit", "integration"],
+      "research_only":  ["freshness"],
+      "transcription":  [],
+      "ui_change":      ["unit", "visual"],
+      "ops_fix":        ["integration"]
+    },
+    "rule": "A workflow cannot reach overall_status: pass unless all checks in its ladder have been executed and passed."
+  },
+
+  "inputs": {
+    "required": [
+      {
+        "field": "verification_request_id",
+        "type": "uuid",
+        "source": "Orchestrator"
+      },
+      {
+        "field": "correlation_id",
+        "type": "uuid",
+        "source": "Orchestrator"
+      },
+      {
+        "field": "execution_plan",
+        "type": "ExecutionPlan",
+        "source": "Orchestrator (pass-through from Planner)"
+      },
+      {
+        "field": "build_report",
+        "type": "BuildReport",
+        "source": "Orchestrator (pass-through from Builder)"
+      },
+      {
+        "field": "evidence_ids",
+        "type": "array<string>",
+        "source": "BuildReport.evidence_map"
+      }
+    ],
+    "optional": [
+      {
+        "field": "research_report",
+        "type": "ResearchReport",
+        "source": "Orchestrator",
+        "note": "Provided when freshness verification is needed."
+      }
+    ]
+  },
+
+  "outputs": {
+    "required": ["VerificationArtifact"],
+    "artifact_requirements": [
+      "Must be immutable once produced (artifact_hash).",
+      "Must reference all criteria_ids from the ExecutionPlan.",
+      "Must reference evidence_ids from the evidence registry.",
+      "Must include freshness_results when freshness_required is true.",
+      "Must include ladder_compliance when workflow_class has a non-empty ladder."
+    ]
+  },
+
+  "resumeSemantics": {
+    "blocked": {
+      "resume_condition": "Missing evidence is supplied and a new verification pass is triggered.",
+      "auto_resume": false,
+      "requires": "New verification_request from Orchestrator with updated evidence_ids."
+    },
+    "fail": {
+      "resume_condition": "Rework is performed (Builder re-executes failed steps) and new BuildReport is submitted.",
+      "auto_resume": false,
+      "requires": "New build_report_id referencing updated evidence."
+    },
+    "warn_required": {
+      "resume_condition": "Policy exception is filed with rationale artifact, OR rework brings criterion to pass.",
+      "auto_resume": false,
+      "requires": "Policy exception artifact or updated evidence."
+    }
+  },
+
+  "authorityConformanceChecks": {
+    "description": "Checks Verify MCP performs to enforce role boundaries.",
+    "checks": [
+      {
+        "id": "AC-001",
+        "check": "Every field in every schema artifact has a fieldOwnership entry.",
+        "failure_status": "blocked",
+        "rule": "Deny by default: fields without ownership metadata fail the gate."
+      },
+      {
+        "id": "AC-002",
+        "check": "Every fieldOwnership path resolves to an actual schema field.",
+        "failure_status": "blocked",
+        "rule": "Reject unknown paths: orphaned ownership entries fail the gate."
+      },
+      {
+        "id": "AC-003",
+        "check": "No Planner-writtenBy field contains routing/state mutation content.",
+        "failure_status": "fail",
+        "rule": "Orchestrator boundary check."
+      },
+      {
+        "id": "AC-004",
+        "check": "No Orchestrator-writtenBy field contains plan authoring content.",
+        "failure_status": "fail",
+        "rule": "Orchestrator boundary check."
+      },
+      {
+        "id": "AC-005",
+        "check": "BuildReport.evidence_map covers every criteria_id from ExecutionPlan.acceptance_criteria.",
+        "failure_status": "blocked",
+        "rule": "Evidence completeness."
+      }
+    ]
+  }
+}

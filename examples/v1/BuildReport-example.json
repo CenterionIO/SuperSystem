@@ -1,0 +1,67 @@
+{
+  "build_report_id": "fc7f11f7-6a19-4ba3-b107-5bcb07a16b15",
+  "correlation_id": "273929c2-7df9-4f4f-94b8-3e911a69331e",
+  "execution_plan_id": "418c1569-9a80-4c2d-bb28-f862afbb10c0",
+  "workflow_class": "code_change",
+  "created_at": "2026-03-05T10:15:00Z",
+  "step_results": [
+    {
+      "step_id": "s-001",
+      "criteria_ids": ["ac-001", "ac-002"],
+      "status": "completed",
+      "plan_blocker_detail": null,
+      "evidence_ids": ["ev-001-file-healthz-ts", "ev-002-async-check"],
+      "action_log": [
+        {
+          "timestamp": "2026-03-05T10:10:00Z",
+          "tool": "file_write",
+          "action": "Created src/routes/healthz.ts",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "step_id": "s-002",
+      "criteria_ids": ["ac-001"],
+      "status": "completed",
+      "plan_blocker_detail": null,
+      "evidence_ids": ["ev-003-app-ts-diff"],
+      "action_log": [
+        {
+          "timestamp": "2026-03-05T10:11:00Z",
+          "tool": "file_edit",
+          "action": "Added healthz import and mount to src/app.ts",
+          "result": "success"
+        }
+      ]
+    },
+    {
+      "step_id": "s-003",
+      "criteria_ids": ["ac-003"],
+      "status": "completed",
+      "plan_blocker_detail": null,
+      "evidence_ids": ["ev-004-test-file", "ev-005-test-results"],
+      "action_log": [
+        {
+          "timestamp": "2026-03-05T10:12:00Z",
+          "tool": "file_write",
+          "action": "Created src/routes/__tests__/healthz.test.ts",
+          "result": "success"
+        },
+        {
+          "timestamp": "2026-03-05T10:13:00Z",
+          "tool": "test_runner",
+          "action": "Ran vitest src/routes/__tests__/healthz.test.ts",
+          "result": "success"
+        }
+      ]
+    }
+  ],
+  "evidence_map": {
+    "ac-001": ["ev-001-file-healthz-ts", "ev-003-app-ts-diff", "ev-005-test-results"],
+    "ac-002": ["ev-002-async-check"],
+    "ac-003": ["ev-004-test-file", "ev-005-test-results"]
+  },
+  "status": "complete",
+  "plan_blockers": []
+}

@@ -1,0 +1,15 @@
+{
+  "workflow_class": "transcription",
+  "selected_ladder": [],
+  "selected_required_checks": ["acceptance_criteria", "evidence_integrity"],
+  "selected_evidence_types": ["transcript", "artifact_hash"],
+  "selected_autonomy_mode": "full_auto",
+  "selected_risk_tier": "low",
+  "selected_route": {
+    "normal_flow": ["idle", "classifying", "building", "build_review", "complete"],
+    "verification_fail": "building",
+    "plan_blocker": "planning",
+    "blocked_evidence_route": "blocked_evidence",
+    "escalation_route": "escalation"
+  }
+}

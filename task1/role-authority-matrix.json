@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SuperSystem Role/Authority Matrix v1",
+  "version": "1.0.0",
+  "description": "Defines the authority boundaries, enforcement points, and evidence requirements for every system role.",
+  "roles": {
+    "Operator": {
+      "description": "Single front-door conversation agent. Receives user input, presents status, handles escalation UX.",
+      "can": [
+        "Receive and normalize user input",
+        "Present status, results, and escalation prompts to user",
+        "Wrap fast-path tools (e.g., Transcribe) with status reporting",
+        "Forward intent to Orchestrator"
+      ],
+      "cannot": [
+        "Route workflows internally",
+        "Author or modify execution plans",
+        "Invoke Builder or Verify MCP directly",
+        "Modify system state beyond user-session scope"
+      ],
+      "inputs": ["user_message", "intent_signal", "autonomy_mode"],
+      "outputs": ["normalized_request", "status_view", "escalation_prompt"],
+      "escalation_triggers": [
+        "User explicitly requests escalation",
+        "Autonomy mode requires user approval at gate",
+        "Blocked status persists beyond retry cap"
+      ],
+      "enforced_by": [
+        "tool_allowlist: Operator may only call Orchestrator entry point and UX rendering tools",
+        "network_scope: no direct external API access except user-facing channels",
+        "runtime_guard: Operator outputs validated against normalized_request schema"
+      ],
+      "evidence_required": [
+        "Session log with correlation_id",
+        "Escalation event artifacts when escalation_triggers fire"
+      ]
+    },
+    "Orchestrator": {
+      "description": "Owns routing and workflow state. Does NOT author plans or build artifacts.",
+      "can": [
+        "Receive normalized requests from Operator",
+        "Classify workflow_class",
+        "Route to Research, Planner, Builder, or Verify MCP",
+        "Manage workflow state transitions",
+        "Set and enforce global loop limits (max iterations, max tool calls, retry caps)",
+        "Detect deadlock/stall via heartbeat policy",
+        "Separate workflow_error from platform_error and route accordingly"
+      ],
+      "cannot": [
+        "Author, modify, or interpret execution plan steps",
+        "Execute build actions",
+        "Score or evaluate verification results",
+        "Make autonomy decisions (policy-driven only)",
+        "Mutate plan content fields"
+      ],
+      "inputs": ["normalized_request", "workflow_class", "autonomy_mode", "correlation_id"],
+      "outputs": ["routing_decision", "state_transition", "error_classification", "loop_control_event"],
+      "escalation_triggers": [
+        "Deadlock/stall detected after heartbeat timeout",
+        "Max iterations or tool calls exceeded",
+        "platform_error unresolved after recovery attempt",
+        "Unclassifiable workflow_class"
+      ],
+      "enforced_by": [
+        "tool_allowlist: Orchestrator may invoke Planner, Research, Builder, Verify MCP, Platform Recovery entry points only",
+        "runtime_guard: state transitions validated against state machine spec",
+        "path_scope: no write access to plan content, build artifacts, or verification evidence",
+        "verifier_gate: Verify MCP confirms Orchestrator never authored plan content"
+      ],
+      "evidence_required": [
+        "State transition log with correlation_id",
+        "Routing decision artifacts with workflow_class and timestamp",
+        "Loop control events (iteration counts, heartbeat records)"
+      ]
+    },
+    "Planner": {
+      "description": "Authors execution plans. Does NOT route workflows or manage state.",
+      "can": [
+        "Receive planning requests from Orchestrator",
+        "Author ExecutionPlan with steps, criteria IDs, and acceptance criteria",
+        "Patch plans in response to plan_blocker feedback",
+        "Reference ResearchReport data in plan authoring",
+        "Define per-step verification requirements"
+      ],
+      "cannot": [
+        "Route workflows or manage state transitions",
+        "Invoke Builder or Verify MCP directly",
+        "Set workflow_class or autonomy_mode",
+        "Mutate routing fields or correlation_id",
+        "Execute build actions"
+      ],
+      "inputs": ["planning_request", "research_report", "plan_blocker_feedback", "workflow_class", "correlation_id"],
+      "outputs": ["execution_plan"],
+      "escalation_triggers": [
+        "Ambiguous or contradictory requirements after research",
+        "plan_blocker cycle exceeds retry cap",
+        "Research report insufficient for plan authoring"
+      ],
+      "enforced_by": [
+        "tool_allowlist: Planner may only write ExecutionPlan objects",
+        "path_scope: no access to routing state, build artifacts, or verification evidence",
+        "runtime_guard: ExecutionPlan output validated — must contain criteria_ids per step",
+        "verifier_gate: Verify MCP confirms plan does not contain routing mutations"
+      ],
+      "evidence_required": [
+        "ExecutionPlan artifact with version and correlation_id",
+        "Plan patch artifacts when plan_blocker triggers rework",
+        "Research-to-plan alignment verification artifact"
+      ]
+    },
+    "Research": {
+      "description": "Investigates unknowns before planning. Produces ResearchReport.",
+      "can": [
+        "Receive research requests from Orchestrator",
+        "Perform live lookups, code analysis, and information gathering",
+        "Produce ResearchReport with findings, confidence levels, and freshness metadata",
+        "Flag gaps or conflicts in gathered information"
+      ],
+      "cannot": [
+        "Author execution plans",
+        "Route workflows or manage state",
+        "Execute build actions",
+        "Invoke Verify MCP directly"
+      ],
+      "inputs": ["research_request", "workflow_class", "correlation_id"],
+      "outputs": ["research_report"],
+      "escalation_triggers": [
+        "Required information unavailable after bounded search",
+        "Conflicting sources with no resolution path",
+        "Freshness check failure on critical claims"
+      ],
+      "enforced_by": [
+        "tool_allowlist: Research may use read-only tools, web search, and designated lookup APIs",
+        "network_scope: bounded to approved external sources",
+        "runtime_guard: ResearchReport output validated — must include freshness metadata",
+        "path_scope: no write access to plans, build artifacts, or routing state"
+      ],
+      "evidence_required": [
+        "ResearchReport artifact with correlation_id and freshness timestamps",
+        "Source references for all claims"
+      ]
+    },
+    "Builder": {
+      "description": "Executes build actions according to the execution plan. Does NOT plan or route.",
+      "can": [
+        "Receive build instructions from Orchestrator referencing an ExecutionPlan",
+        "Execute plan steps (code changes, tool invocations, file operations)",
+        "Produce BuildReport with evidence mapped to criteria IDs",
+        "Report plan_blocker when plan instructions are missing or ambiguous"
+      ],
+      "cannot": [
+        "Author or modify execution plans",
+        "Route workflows or manage state transitions",
+        "Skip or reorder plan steps without plan_blocker",
+        "Invoke Verify MCP directly",
+        "Modify verification evidence"
+      ],
+      "inputs": ["build_request", "execution_plan", "correlation_id"],
+      "outputs": ["build_report", "plan_blocker"],
+      "escalation_triggers": [
+        "Plan step is ambiguous or missing (raises plan_blocker)",
+        "Build action fails after retry cap",
+        "Platform error during execution"
+      ],
+      "enforced_by": [
+        "tool_allowlist: Builder may use build tools scoped by execution plan",
+        "path_scope: write access limited to paths specified in execution plan",
+        "runtime_guard: BuildReport must map evidence to criteria_ids from the plan",
+        "verifier_gate: Verify MCP confirms Builder did not modify plan content or routing state"
+      ],
+      "evidence_required": [
+        "BuildReport artifact with evidence-to-criteria mapping",
+        "plan_blocker artifacts when raised",
+        "Build action logs with correlation_id"
+      ]
+    },
+    "VerifyMCP": {
+      "description": "Canonical verification authority. Scores evidence against acceptance criteria.",
+      "can": [
+        "Receive verification requests from Orchestrator",
+        "Score evidence against acceptance criteria IDs",
+        "Produce VerificationArtifact with pass|warn|fail|blocked status",
+        "Enforce freshness checks on time-sensitive claims",
+        "Enforce fail-closed: missing required check => blocked",
+        "Run verification ladder (unit/integration/e2e/visual/API) per workflow class"
+      ],
+      "cannot": [
+        "Author or modify execution plans",
+        "Execute build actions",
+        "Route workflows or manage state transitions",
+        "Override fail-closed default without council policy"
+      ],
+      "inputs": ["verification_request", "build_report", "execution_plan", "evidence_ids", "correlation_id"],
+      "outputs": ["verification_artifact"],
+      "escalation_triggers": [
+        "Required evidence missing (status: blocked)",
+        "Verifier plugin timeout or resource exhaustion",
+        "Council override requested but no council policy exists"
+      ],
+      "enforced_by": [
+        "tool_allowlist: Verify MCP may invoke verifier plugins and read evidence registry only",
+        "path_scope: read-only access to build artifacts and evidence; write access only to verification artifacts",
+        "runtime_guard: VerificationArtifact must reference criteria_ids and evidence_ids",
+        "runtime_guard: fail-closed enforced — missing required check cannot produce pass"
+      ],
+      "evidence_required": [
+        "VerificationArtifact with per-criterion scores and evidence references",
+        "Freshness check results for time-sensitive claims",
+        "Immutable verification artifact hash"
+      ]
+    },
+    "PlatformRecovery": {
+      "description": "Handles platform_error conditions using bounded runbooks.",
+      "can": [
+        "Receive platform_error from Orchestrator",
+        "Execute bounded runbook actions (restart, reconnect, clear cache)",
+        "Perform independent health verification before recommending resume",
+        "Report recovery success or failure"
+      ],
+      "cannot": [
+        "Modify workflow state beyond blocked_platform status",
+        "Author or modify execution plans",
+        "Execute build actions",
+        "Override Verify MCP results",
+        "Exceed runbook action caps or exit conditions"
+      ],
+      "inputs": ["platform_error", "runbook_id", "correlation_id"],
+      "outputs": ["recovery_result", "health_check_result"],
+      "escalation_triggers": [
+        "Recovery actions exhausted within bounds",
+        "Health verification fails after recovery",
+        "Unknown platform error type not covered by runbook"
+      ],
+      "enforced_by": [
+        "tool_allowlist: PlatformRecovery may only invoke runbook-specified tools",
+        "runtime_guard: action count capped per runbook; exit conditions enforced",
+        "runtime_guard: health verification required before resume signal",
+        "path_scope: no access to plan content, build artifacts, or verification evidence"
+      ],
+      "evidence_required": [
+        "Recovery action log with correlation_id",
+        "Health check result artifact",
+        "Escalation report when recovery fails"
+      ]
+    }
+  }
+}

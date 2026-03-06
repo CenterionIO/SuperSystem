@@ -1,0 +1,259 @@
+{
+  "title": "Runtime State Machine v1",
+  "version": "1.1.0",
+  "description": "Workflow state machine with explicit transitions, enum-validated targets, and resume policies. No wildcard edges.",
+
+  "validStates": [
+    "idle", "classifying", "researching", "research_review",
+    "planning", "plan_review", "building", "build_review",
+    "plan_blocker", "workflow_error", "platform_error", "blocked_platform",
+    "escalation", "complete"
+  ],
+
+  "terminalStates": ["idle", "complete"],
+
+  "states": {
+    "idle": {
+      "description": "No active workflow. Awaiting user input via Operator.",
+      "owner": "Operator",
+      "verify_gate": null
+    },
+    "classifying": {
+      "description": "Orchestrator is determining workflow_class and routing.",
+      "owner": "Orchestrator",
+      "verify_gate": null
+    },
+    "researching": {
+      "description": "Research agent is gathering information. Produces ResearchReport.",
+      "owner": "Research",
+      "verify_gate": null
+    },
+    "research_review": {
+      "description": "Gate: verify Research -> Plan alignment before planning begins.",
+      "owner": "VerifyMCP",
+      "verify_gate": {
+        "gate_id": "G-001",
+        "checks": ["ResearchReport schema validation", "Freshness policy compliance", "Gap impact assessment"],
+        "pass_transition": "planning",
+        "fail_transition": "researching",
+        "blocked_transition": "escalation"
+      }
+    },
+    "planning": {
+      "description": "Planner is authoring ExecutionPlan from ResearchReport and request.",
+      "owner": "Planner",
+      "verify_gate": null
+    },
+    "plan_review": {
+      "description": "Gate: verify Plan -> Build alignment before build begins.",
+      "owner": "VerifyMCP",
+      "verify_gate": {
+        "gate_id": "G-002",
+        "checks": [
+          "ExecutionPlan schema validation",
+          "Every step has criteria_ids (OP-005)",
+          "Orchestrator boundary check (AC-004)",
+          "Planner boundary check (AC-003)",
+          "correlation_id echo equality (OP-003)",
+          "Plan references valid research_report_id",
+          "All fieldOwnership entries resolve (AC-002)",
+          "No fields without ownership (AC-001)"
+        ],
+        "pass_transition": "building",
+        "fail_transition": "planning",
+        "blocked_transition": "escalation"
+      }
+    },
+    "building": {
+      "description": "Builder is executing plan steps. Produces BuildReport.",
+      "owner": "Builder",
+      "verify_gate": null
+    },
+    "build_review": {
+      "description": "Gate: verify build output against acceptance criteria.",
+      "owner": "VerifyMCP",
+      "verify_gate": {
+        "gate_id": "G-003",
+        "checks": [
+          "BuildReport schema validation",
+          "Evidence map covers all criteria_ids (AC-005)",
+          "Verification ladder compliance",
+          "Freshness checks (if required)",
+          "Fail-closed enforcement (FC-001 through FC-005)",
+          "Builder boundary check: no plan or routing mutations",
+          "correlation_id echo equality"
+        ],
+        "pass_transition": "complete",
+        "fail_transition": "building",
+        "blocked_transition": "escalation"
+      }
+    },
+    "plan_blocker": {
+      "description": "Builder reported missing/ambiguous plan instructions. Routes back to Planner.",
+      "owner": "Orchestrator",
+      "verify_gate": null
+    },
+    "workflow_error": {
+      "description": "A workflow-level error occurred (not platform). Orchestrator evaluates retry or escalation.",
+      "owner": "Orchestrator",
+      "verify_gate": null,
+      "resume_policy": {
+        "type": "return_to_previous_state",
+        "previous_state_required": true,
+        "allowed_resume_targets": ["researching", "planning", "building"],
+        "condition": "under_retry_cap"
+      }
+    },
+    "platform_error": {
+      "description": "A platform-level error occurred (infra, network, tool failure). Routes to PlatformRecovery.",
+      "owner": "Orchestrator",
+      "verify_gate": null
+    },
+    "blocked_platform": {
+      "description": "PlatformRecovery is executing bounded runbook.",
+      "owner": "PlatformRecovery",
+      "verify_gate": {
+        "gate_id": "G-004",
+        "checks": ["Health verification passes", "Runbook exit conditions met"],
+        "pass_transition": null,
+        "fail_transition": "escalation",
+        "blocked_transition": "escalation"
+      },
+      "resume_policy": {
+        "type": "return_to_previous_state",
+        "previous_state_required": true,
+        "allowed_resume_targets": ["researching", "planning", "building"],
+        "condition": "health_verified"
+      }
+    },
+    "escalation": {
+      "description": "User intervention required. Operator presents status and requests input.",
+      "owner": "Operator",
+      "verify_gate": null,
+      "resume_policy": {
+        "type": "return_to_previous_state",
+        "previous_state_required": true,
+        "allowed_resume_targets": ["idle", "researching", "planning", "building"],
+        "condition": "user_provides_resolution"
+      }
+    },
+    "complete": {
+      "description": "Workflow finished. All gates passed. Artifacts persisted.",
+      "owner": "Orchestrator",
+      "verify_gate": null,
+      "terminal": true
+    }
+  },
+
+  "transitions": [
+    { "from": "idle",             "to": "classifying",      "trigger": "User submits request via Operator",        "guard": null },
+    { "from": "classifying",      "to": "researching",      "trigger": "workflow_class requires research",         "guard": null },
+    { "from": "classifying",      "to": "planning",         "trigger": "workflow_class does not require research", "guard": null },
+    { "from": "researching",      "to": "research_review",  "trigger": "ResearchReport produced",                 "guard": "G-001" },
+    { "from": "research_review",  "to": "planning",         "trigger": "G-001 pass",                              "guard": null },
+    { "from": "research_review",  "to": "researching",      "trigger": "G-001 fail",                              "guard": null },
+    { "from": "research_review",  "to": "escalation",       "trigger": "G-001 blocked",                           "guard": null },
+    { "from": "planning",         "to": "plan_review",      "trigger": "ExecutionPlan produced",                   "guard": "G-002" },
+    { "from": "plan_review",      "to": "building",         "trigger": "G-002 pass",                              "guard": null },
+    { "from": "plan_review",      "to": "planning",         "trigger": "G-002 fail",                              "guard": null },
+    { "from": "plan_review",      "to": "escalation",       "trigger": "G-002 blocked",                           "guard": null },
+    { "from": "building",         "to": "build_review",     "trigger": "BuildReport produced",                    "guard": "G-003" },
+    { "from": "building",         "to": "plan_blocker",     "trigger": "Builder raises plan_blocker",             "guard": null },
+    { "from": "build_review",     "to": "complete",         "trigger": "G-003 pass",                              "guard": null },
+    { "from": "build_review",     "to": "building",         "trigger": "G-003 fail",                              "guard": null },
+    { "from": "build_review",     "to": "escalation",       "trigger": "G-003 blocked",                           "guard": null },
+    { "from": "plan_blocker",     "to": "planning",         "trigger": "plan_blocker_detail forwarded to Planner", "guard": null },
+
+    { "from": "researching",      "to": "workflow_error",   "trigger": "Workflow-level error in research",        "guard": null },
+    { "from": "planning",         "to": "workflow_error",   "trigger": "Workflow-level error in planning",        "guard": null },
+    { "from": "building",         "to": "workflow_error",   "trigger": "Workflow-level error in building",        "guard": null },
+    { "from": "research_review",  "to": "workflow_error",   "trigger": "Workflow-level error in research review", "guard": null },
+    { "from": "plan_review",      "to": "workflow_error",   "trigger": "Workflow-level error in plan review",     "guard": null },
+    { "from": "build_review",     "to": "workflow_error",   "trigger": "Workflow-level error in build review",    "guard": null },
+
+    { "from": "workflow_error",   "to": "researching",      "trigger": "Retry: return to researching (under cap)",  "guard": "retry_cap_check" },
+    { "from": "workflow_error",   "to": "planning",         "trigger": "Retry: return to planning (under cap)",     "guard": "retry_cap_check" },
+    { "from": "workflow_error",   "to": "building",         "trigger": "Retry: return to building (under cap)",     "guard": "retry_cap_check" },
+    { "from": "workflow_error",   "to": "escalation",       "trigger": "Retry cap exceeded or non-retryable error", "guard": null },
+
+    { "from": "researching",      "to": "platform_error",   "trigger": "Platform-level error in research",        "guard": null },
+    { "from": "planning",         "to": "platform_error",   "trigger": "Platform-level error in planning",        "guard": null },
+    { "from": "building",         "to": "platform_error",   "trigger": "Platform-level error in building",        "guard": null },
+
+    { "from": "platform_error",   "to": "blocked_platform", "trigger": "Automatic: route to platform recovery",   "guard": null },
+    { "from": "blocked_platform", "to": "researching",      "trigger": "G-004 pass: resume to researching",       "guard": "G-004", "resume_policy_ref": "return_to_previous_state" },
+    { "from": "blocked_platform", "to": "planning",         "trigger": "G-004 pass: resume to planning",          "guard": "G-004", "resume_policy_ref": "return_to_previous_state" },
+    { "from": "blocked_platform", "to": "building",         "trigger": "G-004 pass: resume to building",          "guard": "G-004", "resume_policy_ref": "return_to_previous_state" },
+    { "from": "blocked_platform", "to": "escalation",       "trigger": "G-004 fail or blocked: recovery failed",  "guard": null },
+
+    { "from": "escalation",       "to": "researching",      "trigger": "User resolves: return to researching",    "guard": null, "resume_policy_ref": "return_to_previous_state" },
+    { "from": "escalation",       "to": "planning",         "trigger": "User resolves: return to planning",       "guard": null, "resume_policy_ref": "return_to_previous_state" },
+    { "from": "escalation",       "to": "building",         "trigger": "User resolves: return to building",       "guard": null, "resume_policy_ref": "return_to_previous_state" },
+    { "from": "escalation",       "to": "idle",             "trigger": "User cancels workflow",                   "guard": null }
+  ],
+
+  "transitionConstraints": {
+    "description": "Rules enforced on the transition set.",
+    "rules": [
+      {
+        "id": "TC-001",
+        "rule": "Every 'to' value in transitions MUST be a member of validStates.",
+        "enforced_by": "validator"
+      },
+      {
+        "id": "TC-002",
+        "rule": "Every 'from' value in transitions MUST be a member of validStates.",
+        "enforced_by": "validator"
+      },
+      {
+        "id": "TC-003",
+        "rule": "No wildcard (*) transitions allowed. All source states must be explicit.",
+        "enforced_by": "validator"
+      },
+      {
+        "id": "TC-004",
+        "rule": "Transitions with resume_policy_ref MUST target a state listed in the source state's resume_policy.allowed_resume_targets.",
+        "enforced_by": "validator"
+      },
+      {
+        "id": "TC-005",
+        "rule": "States with resume_policy.previous_state_required MUST have the previous_state tracked in runtime context.",
+        "enforced_by": "runtime_guard"
+      }
+    ]
+  },
+
+  "loopControls": {
+    "max_iterations_per_phase": {
+      "researching": 3,
+      "planning": 5,
+      "building": 10,
+      "plan_blocker_cycles": 3,
+      "platform_recovery_attempts": 3
+    },
+    "max_tool_calls_per_phase": {
+      "researching": 50,
+      "planning": 20,
+      "building": 100
+    },
+    "retry_caps_by_error_type": {
+      "workflow_error": 3,
+      "platform_error": 3,
+      "verification_fail": 2
+    },
+    "heartbeat_policy": {
+      "interval_seconds": 30,
+      "stall_threshold_missed_beats": 3,
+      "stall_action": "workflow_error"
+    },
+    "exceeded_action": "escalation"
+  },
+
+  "verdictTransitionSummary": {
+    "description": "How verification verdicts map to workflow outcomes.",
+    "pass":    "Workflow proceeds to next state or completes.",
+    "warn":    "Required check: treated as blocked. Optional check: proceeds with rationale artifact.",
+    "fail":    "Workflow returns to producing role for rework. Retry cap applies.",
+    "blocked": "Workflow halts. Missing evidence must be supplied. If unresolvable, escalation."
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "policy_type": "override_policy",
+  "version": "v1",
+  "precedence": [
+    "fail_closed_rules",
+    "permissions_policy",
+    "routing_policy",
+    "workflow_taxonomy",
+    "council_override"
+  ],
+  "council_override": {
+    "enabled": true,
+    "allowed_when": [
+      "All required checks have been executed",
+      "Overall status is warn (not fail or blocked)",
+      "Operator has been notified and user has acknowledged risk",
+      "No fail_closed_rule is violated"
+    ],
+    "requires_artifacts": [
+      "council_decision_rationale",
+      "risk_acknowledgment",
+      "affected_criteria_ids",
+      "override_expiry_timestamp"
+    ]
+  },
+  "audit_requirements": {
+    "required_fields": [
+      "override_id",
+      "correlation_id",
+      "override_reason",
+      "overridden_checks",
+      "council_members",
+      "decision_timestamp",
+      "expiry_timestamp",
+      "risk_tier_at_override"
+    ]
+  }
+}

@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BuildReport v1",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "build_report_id",
+    "correlation_id",
+    "execution_plan_id",
+    "workflow_class",
+    "created_at",
+    "step_results",
+    "evidence_map",
+    "status"
+  ],
+  "properties": {
+    "build_report_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "execution_plan_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "workflow_class": {
+      "type": "string",
+      "enum": ["code_change", "mcp_tool", "research_only", "transcription", "ui_change", "ops_fix"]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "step_results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["step_id", "criteria_ids", "status", "evidence_ids", "action_log"],
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "description": "Must match a step_id from the ExecutionPlan."
+          },
+          "criteria_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" },
+            "description": "Criteria this step result addresses. Must match plan."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["completed", "failed", "plan_blocker"],
+            "description": "Builder's self-reported step outcome."
+          },
+          "plan_blocker_detail": {
+            "type": ["string", "null"],
+            "description": "Required when status is plan_blocker."
+          },
+          "evidence_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "References to evidence in the evidence registry."
+          },
+          "action_log": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["timestamp", "tool", "action", "result"],
+              "properties": {
+                "timestamp": { "type": "string", "format": "date-time" },
+                "tool": { "type": "string" },
+                "action": { "type": "string" },
+                "result": { "type": "string", "enum": ["success", "failure", "skipped"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "evidence_map": {
+      "type": "object",
+      "description": "Maps criteria_id -> [evidence_id]. Every criteria_id from the plan must appear.",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": ["complete", "partial", "plan_blocker", "failed"],
+      "description": "Overall build outcome."
+    },
+    "plan_blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step_id", "detail"],
+        "properties": {
+          "step_id": { "type": "string" },
+          "detail": { "type": "string" }
+        }
+      },
+      "description": "Aggregated plan blockers. Present when status includes plan_blocker."
+    }
+  },
+
+  "fieldOwnership": {
+    "/build_report_id":                                  { "writtenBy": ["Builder"],      "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"] },
+    "/correlation_id":                                   { "writtenBy": ["Orchestrator"], "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"], "echoedBy": ["Builder"] },
+    "/execution_plan_id":                                { "writtenBy": ["Orchestrator"], "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"], "echoedBy": ["Builder"] },
+    "/workflow_class":                                   { "writtenBy": ["Orchestrator"], "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"], "echoedBy": ["Builder"] },
+    "/created_at":                                       { "writtenBy": ["Builder"],      "readableBy": ["*"],                        "verifiedBy": ["VerifyMCP"] },
+    "/step_results":                                     { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]":                                  { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/step_id":                          { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/criteria_ids":                     { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP"],                "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/criteria_ids/[]":                  { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP"],                "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/status":                           { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/plan_blocker_detail":              { "writtenBy": ["Builder"],      "readableBy": ["Orchestrator", "Planner"],   "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/evidence_ids":                     { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP"],                "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/evidence_ids/[]":                  { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP"],                "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/action_log":                       { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/action_log/[]":                    { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP", "Orchestrator"], "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/action_log/[]/timestamp":          { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP"],                "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/action_log/[]/tool":               { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP"],                "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/action_log/[]/action":             { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP"],                "verifiedBy": ["VerifyMCP"] },
+    "/step_results/[]/action_log/[]/result":             { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP"],                "verifiedBy": ["VerifyMCP"] },
+    "/evidence_map":                                     { "writtenBy": ["Builder"],      "readableBy": ["VerifyMCP"],                "verifiedBy": ["VerifyMCP"] },
+    "/status":                                           { "writtenBy": ["Builder"],      "readableBy": ["Orchestrator", "VerifyMCP"], "verifiedBy": ["VerifyMCP"] },
+    "/plan_blockers":                                    { "writtenBy": ["Builder"],      "readableBy": ["Orchestrator", "Planner"],   "verifiedBy": ["VerifyMCP"] },
+    "/plan_blockers/[]":                                 { "writtenBy": ["Builder"],      "readableBy": ["Orchestrator", "Planner"],   "verifiedBy": ["VerifyMCP"] },
+    "/plan_blockers/[]/step_id":                         { "writtenBy": ["Builder"],      "readableBy": ["Orchestrator", "Planner"],   "verifiedBy": ["VerifyMCP"] },
+    "/plan_blockers/[]/detail":                          { "writtenBy": ["Builder"],      "readableBy": ["Orchestrator", "Planner"],   "verifiedBy": ["VerifyMCP"] }
+  }
+}

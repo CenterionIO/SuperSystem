@@ -1,0 +1,42 @@
+{
+  "research_report_id": "f7a1c2d7-e699-4f21-8416-a4ea3992dca5",
+  "correlation_id": "273929c2-7df9-4f4f-94b8-3e911a69331e",
+  "workflow_class": "code_change",
+  "created_at": "2026-03-05T10:00:00Z",
+  "findings": [
+    {
+      "finding_id": "f-001",
+      "claim": "The /health endpoint pattern in this codebase uses Express router at src/routes/health.ts",
+      "confidence": "high",
+      "sources": ["src/routes/health.ts", "src/app.ts"],
+      "freshness_checked_at": null
+    },
+    {
+      "finding_id": "f-002",
+      "claim": "The test framework is vitest with config at vitest.config.ts",
+      "confidence": "high",
+      "sources": ["package.json", "vitest.config.ts"],
+      "freshness_checked_at": null
+    },
+    {
+      "finding_id": "f-003",
+      "claim": "Express v4.19.2 supports async route handlers without wrapper",
+      "confidence": "medium",
+      "sources": ["package.json", "https://expressjs.com/en/guide/error-handling.html"],
+      "freshness_checked_at": "2026-03-05T09:58:00Z"
+    }
+  ],
+  "confidence": "high",
+  "freshness": {
+    "policy_applied": true,
+    "all_time_sensitive_checked": true
+  },
+  "sources": [
+    "src/routes/health.ts",
+    "src/app.ts",
+    "package.json",
+    "vitest.config.ts",
+    "https://expressjs.com/en/guide/error-handling.html"
+  ],
+  "gaps": []
+}

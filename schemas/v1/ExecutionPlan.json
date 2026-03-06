@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExecutionPlan v1",
+  "version": "1.0.0",
+  "type": "object",
+  "required": [
+    "execution_plan_id",
+    "correlation_id",
+    "workflow_class",
+    "version",
+    "created_at",
+    "research_report_id",
+    "steps",
+    "acceptance_criteria",
+    "verification_requirements"
+  ],
+  "properties": {
+    "execution_plan_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "correlation_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "workflow_class": {
+      "type": "string",
+      "enum": ["code_change", "mcp_tool", "research_only", "transcription", "ui_change", "ops_fix"]
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Plan version. Increments on each Planner patch."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "research_report_id": {
+      "type": ["string", "null"],
+      "format": "uuid"
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["step_id", "order", "action", "description", "criteria_ids", "tools_required", "paths_affected"],
+        "properties": {
+          "step_id": { "type": "string" },
+          "order": { "type": "integer", "minimum": 1 },
+          "action": {
+            "type": "string",
+            "description": "What the Builder must do."
+          },
+          "description": { "type": "string" },
+          "criteria_ids": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" },
+            "description": "References to acceptance_criteria entries this step satisfies."
+          },
+          "tools_required": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "paths_affected": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "verification_type": {
+            "type": "string",
+            "enum": ["unit", "integration", "e2e", "visual", "api", "manual"],
+            "description": "Minimum verification level for this step."
+          }
+        }
+      }
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["criteria_id", "description", "required"],
+        "properties": {
+          "criteria_id": { "type": "string" },
+          "description": { "type": "string" },
+          "required": {
+            "type": "boolean",
+            "description": "If true, must pass for workflow to complete. Fail-closed."
+          }
+        }
+      }
+    },
+    "verification_requirements": {
+      "type": "object",
+      "required": ["minimum_ladder", "freshness_required"],
+      "properties": {
+        "minimum_ladder": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["unit", "integration", "e2e", "visual", "api"]
+          },
+          "description": "Ordered verification ladder required for this workflow."
+        },
+        "freshness_required": {
+          "type": "boolean",
+          "description": "Whether time-sensitive claims in this plan require freshness verification."
+        }
+      }
+    }
+  },
+
+  "fieldOwnership": {
+    "/execution_plan_id":                               { "writtenBy": ["Planner"],      "readableBy": ["*"],                           "verifiedBy": ["VerifyMCP"] },
+    "/correlation_id":                                  { "writtenBy": ["Orchestrator"], "readableBy": ["*"],                           "verifiedBy": ["VerifyMCP"], "echoedBy": ["Planner"] },
+    "/workflow_class":                                  { "writtenBy": ["Orchestrator"], "readableBy": ["*"],                           "verifiedBy": ["VerifyMCP"], "echoedBy": ["Planner"] },
+    "/version":                                         { "writtenBy": ["Planner"],      "readableBy": ["*"],                           "verifiedBy": ["VerifyMCP"] },
+    "/created_at":                                      { "writtenBy": ["Planner"],      "readableBy": ["*"],                           "verifiedBy": ["VerifyMCP"] },
+    "/research_report_id":                              { "writtenBy": ["Orchestrator"], "readableBy": ["Planner", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"], "echoedBy": ["Planner"] },
+    "/steps":                                           { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/steps/[]":                                        { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/steps/[]/step_id":                                { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/steps/[]/order":                                  { "writtenBy": ["Planner"],      "readableBy": ["Builder", "Orchestrator"],     "verifiedBy": ["VerifyMCP"] },
+    "/steps/[]/action":                                 { "writtenBy": ["Planner"],      "readableBy": ["Builder"],                     "verifiedBy": ["VerifyMCP"] },
+    "/steps/[]/description":                            { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/steps/[]/criteria_ids":                           { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/steps/[]/criteria_ids/[]":                        { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/steps/[]/tools_required":                         { "writtenBy": ["Planner"],      "readableBy": ["Builder", "Orchestrator"],     "verifiedBy": ["VerifyMCP"] },
+    "/steps/[]/tools_required/[]":                      { "writtenBy": ["Planner"],      "readableBy": ["Builder", "Orchestrator"],     "verifiedBy": ["VerifyMCP"] },
+    "/steps/[]/paths_affected":                         { "writtenBy": ["Planner"],      "readableBy": ["Builder", "Orchestrator"],     "verifiedBy": ["VerifyMCP"] },
+    "/steps/[]/paths_affected/[]":                      { "writtenBy": ["Planner"],      "readableBy": ["Builder", "Orchestrator"],     "verifiedBy": ["VerifyMCP"] },
+    "/steps/[]/verification_type":                      { "writtenBy": ["Planner"],      "readableBy": ["VerifyMCP"],                   "verifiedBy": ["VerifyMCP"] },
+    "/acceptance_criteria":                             { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/acceptance_criteria/[]":                          { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/acceptance_criteria/[]/criteria_id":              { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/acceptance_criteria/[]/description":              { "writtenBy": ["Planner"],      "readableBy": ["Builder", "VerifyMCP"],        "verifiedBy": ["VerifyMCP"] },
+    "/acceptance_criteria/[]/required":                 { "writtenBy": ["Planner"],      "readableBy": ["VerifyMCP"],                   "verifiedBy": ["VerifyMCP"] },
+    "/verification_requirements":                       { "writtenBy": ["Planner"],      "readableBy": ["VerifyMCP", "Orchestrator"],   "verifiedBy": ["VerifyMCP"] },
+    "/verification_requirements/minimum_ladder":        { "writtenBy": ["Planner"],      "readableBy": ["VerifyMCP"],                   "verifiedBy": ["VerifyMCP"] },
+    "/verification_requirements/minimum_ladder/[]":     { "writtenBy": ["Planner"],      "readableBy": ["VerifyMCP"],                   "verifiedBy": ["VerifyMCP"] },
+    "/verification_requirements/freshness_required":    { "writtenBy": ["Planner"],      "readableBy": ["VerifyMCP"],                   "verifiedBy": ["VerifyMCP"] }
+  }
+}
