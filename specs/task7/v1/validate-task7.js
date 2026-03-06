@@ -40,14 +40,42 @@ function gateS82VersioningMigration() {
   const doc = loadJson(path.join(TASK7_DIR, 'versioning-migration-policy.json'));
   requireFields('S8-2', doc, ['version', 'semver_policy', 'backward_compat_window', 'migration_strategy']);
 
-  if (doc.semver_policy && !doc.semver_policy.format) {
-    errors.push('S8-2 semver_policy missing format');
+  // semver_policy deep checks
+  const sp = doc.semver_policy || {};
+  if (sp.format !== 'major.minor.patch') {
+    errors.push('S8-2 semver_policy.format must be "major.minor.patch"');
   }
-  if (doc.backward_compat_window && typeof doc.backward_compat_window.duration_days !== 'number') {
-    errors.push('S8-2 backward_compat_window.duration_days must be a number');
+  for (const key of ['breaking_change_triggers', 'minor_change_triggers', 'patch_change_triggers']) {
+    if (!Array.isArray(sp[key]) || sp[key].length === 0) {
+      errors.push(`S8-2 semver_policy.${key} must be a non-empty array`);
+    }
   }
-  if (doc.migration_strategy && typeof doc.migration_strategy.rollback_supported !== 'boolean') {
+
+  // backward_compat_window deep checks
+  const bc = doc.backward_compat_window || {};
+  if (typeof bc.duration_days !== 'number' || bc.duration_days < 1) {
+    errors.push('S8-2 backward_compat_window.duration_days must be a positive integer');
+  }
+  if (typeof bc.strategy !== 'string' || bc.strategy.length === 0) {
+    errors.push('S8-2 backward_compat_window.strategy must be a non-empty string');
+  }
+  if (typeof bc.deprecation_notice_required !== 'boolean') {
+    errors.push('S8-2 backward_compat_window.deprecation_notice_required must be boolean');
+  }
+
+  // migration_strategy deep checks
+  const ms = doc.migration_strategy || {};
+  if (typeof ms.approach !== 'string' || ms.approach.length === 0) {
+    errors.push('S8-2 migration_strategy.approach must be a non-empty string');
+  }
+  if (typeof ms.rollback_supported !== 'boolean') {
     errors.push('S8-2 migration_strategy.rollback_supported must be boolean');
+  }
+  if (typeof ms.data_migration_required !== 'boolean') {
+    errors.push('S8-2 migration_strategy.data_migration_required must be boolean');
+  }
+  if (typeof ms.validation_before_cutover !== 'boolean') {
+    errors.push('S8-2 migration_strategy.validation_before_cutover must be boolean');
   }
 }
 
