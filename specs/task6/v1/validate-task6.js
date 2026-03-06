@@ -67,13 +67,13 @@ function gateS64CrossConsistency() {
   const requiredModes = ['approve_each', 'approve_final', 'full_auto'];
   for (const mode of requiredModes) {
     if (!autonomy.modes || !autonomy.modes[mode]) {
-      errors.push(`S6-4 missing autonomy mode: ${mode}`);
+      errors.push(`S6-5 missing autonomy mode: ${mode}`);
       continue;
     }
     const gate = autonomy.modes[mode].gate_application || {};
     for (const reviewGate of ['research_review', 'plan_review', 'build_review']) {
       if (!['auto', 'manual'].includes(gate[reviewGate])) {
-        errors.push(`S6-4 ${mode}.${reviewGate} must be auto|manual`);
+        errors.push(`S6-5 ${mode}.${reviewGate} must be auto|manual`);
       }
     }
   }
@@ -83,7 +83,7 @@ function gateS64CrossConsistency() {
     const modeActions = (autonomy.modes?.[mode]?.escalation_actions) || [];
     for (const action of modeActions) {
       if (!uiActions.has(action)) {
-        errors.push(`S6-4 action mismatch: ${mode} references unknown escalation action ${action}`);
+        errors.push(`S6-5 action mismatch: ${mode} references unknown escalation action ${action}`);
       }
     }
   }
@@ -96,10 +96,10 @@ function gateS64StatusViewSchema() {
   const reqFields = ['correlation_id', 'workflow_class', 'autonomy_mode', 'current_state', 'last_transition_at', 'blocked_reason', 'next_action'];
   for (const f of reqFields) {
     if (!schema.required || !schema.required.includes(f)) {
-      errors.push(`S6-4b status-view-contract.schema.json missing required field: ${f}`);
+      errors.push(`S6-4 status-view-contract.schema.json missing required field: ${f}`);
     }
     if (!schema.properties || !schema.properties[f]) {
-      errors.push(`S6-4b status-view-contract.schema.json missing property definition: ${f}`);
+      errors.push(`S6-4 status-view-contract.schema.json missing property definition: ${f}`);
     }
   }
 
@@ -108,7 +108,7 @@ function gateS64StatusViewSchema() {
     const br = schema.properties.blocked_reason;
     const types = Array.isArray(br.type) ? br.type : [br.type];
     if (!types.includes('null')) {
-      errors.push('S6-4b blocked_reason must accept null');
+      errors.push('S6-4 blocked_reason must accept null');
     }
   }
 
@@ -125,7 +125,7 @@ function gateS64StatusViewSchema() {
   };
   if (!validate(sample)) {
     for (const err of validate.errors || []) {
-      errors.push(`S6-4b sample payload failed: ${err.instancePath || '/'}: ${err.message}`);
+      errors.push(`S6-4 sample payload failed: ${err.instancePath || '/'}: ${err.message}`);
     }
   }
 
@@ -141,7 +141,7 @@ function gateS64StatusViewSchema() {
   };
   if (!validate(blockedSample)) {
     for (const err of validate.errors || []) {
-      errors.push(`S6-4b blocked sample failed: ${err.instancePath || '/'}: ${err.message}`);
+      errors.push(`S6-4 blocked sample failed: ${err.instancePath || '/'}: ${err.message}`);
     }
   }
 }
@@ -155,7 +155,7 @@ function gateS65CiFailClosed() {
   const escalation = loadJson(path.join(TASK6_DIR, 'escalation-ui-contract.json'));
   const autonomy = loadJson(path.join(TASK6_DIR, 'autonomy-modes-policy.json'));
   if (escalation.version !== 'v1' || autonomy.version !== 'v1') {
-    errors.push('S6-5 fail-closed: contract version must be v1');
+    errors.push('S6-6 fail-closed: contract version must be v1');
   }
 }
 
@@ -179,9 +179,9 @@ function main() {
   console.log('- S6-1: presence gate');
   console.log('- S6-2: escalation contract schema gate');
   console.log('- S6-3: autonomy policy schema gate');
-  console.log('- S6-4: cross-contract consistency gate');
-  console.log('- S6-4b: status-view-contract schema gate');
-  console.log('- S6-5: CI fail-closed gate');
+  console.log('- S6-4: status-view-contract schema gate');
+  console.log('- S6-5: cross-contract consistency gate');
+  console.log('- S6-6: CI fail-closed gate');
 }
 
 main();
