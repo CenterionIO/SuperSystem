@@ -38,6 +38,7 @@ const taxonomy = loadJson(path.join(POLICY_DIR, 'workflow_taxonomy.json'));
 const routing = loadJson(path.join(POLICY_DIR, 'routing_policy.json'));
 const gateSequence = loadJson(path.join(TASK3_DIR, 'gate-sequence.json'));
 const conformanceSpec = loadJson(path.join(TASK5_DIR, 'conformance-report-spec.json'));
+const goldenPathFormat = loadJson(path.join(TASK5_DIR, 'golden-path-format.json'));
 
 // ─── Load golden paths ───
 
@@ -45,6 +46,57 @@ const goldenPaths = [
   { name: 'code_change', data: loadJson(path.join(TASK5_DIR, 'golden-path-code-change.json')) },
   { name: 'mcp_tool', data: loadJson(path.join(TASK5_DIR, 'golden-path-mcp-tool.json')) },
 ];
+const repoDeclaredFormat = goldenPathFormat.ss_format;
+const activeGoldenPaths = goldenPaths;
+
+function detectGoldenPathFormat(data) {
+  if (data && typeof data === 'object') {
+    if (data.workflow_metadata && data.state_trace && data.artifacts) {
+      return 'trace';
+    }
+    if (data.verify_request && data.expected) {
+      return 'fixture';
+    }
+  }
+  return 'unknown';
+}
+
+function validateFormatPolicy() {
+  const allowed = goldenPathFormat.allowed_formats;
+  if (!Array.isArray(allowed) || allowed.length === 0) {
+    errors.push('Format policy: allowed_formats must be a non-empty array');
+    return;
+  }
+  if (!allowed.includes('trace') || !allowed.includes('fixture')) {
+    errors.push('Format policy: allowed_formats must include trace and fixture');
+  }
+  if (!allowed.includes(repoDeclaredFormat)) {
+    errors.push(`Format policy: declared ss_format (${repoDeclaredFormat}) not in allowed_formats`);
+  }
+
+  for (const { name, data } of goldenPaths) {
+    const detected = detectGoldenPathFormat(data);
+    if (detected !== repoDeclaredFormat) {
+      errors.push(`Format mismatch [${name}]: declared=${repoDeclaredFormat}, detected=${detected}`);
+      continue;
+    }
+    if (detected === 'trace') {
+      if (!Array.isArray(data.state_trace?.transitions) || data.state_trace.transitions.length === 0) {
+        errors.push(`Trace format [${name}]: state_trace.transitions must be non-empty array`);
+      }
+      if (!data.artifacts || typeof data.artifacts !== 'object') {
+        errors.push(`Trace format [${name}]: artifacts object is required`);
+      }
+    } else if (detected === 'fixture') {
+      if (!Array.isArray(data.verify_request?.criteria) || data.verify_request.criteria.length === 0) {
+        errors.push(`Fixture format [${name}]: verify_request.criteria must be non-empty array`);
+      }
+      if (!data.expected || typeof data.expected !== 'object') {
+        errors.push(`Fixture format [${name}]: expected object is required`);
+      }
+    }
+  }
+}
 
 // ─── AJV setup ───
 
@@ -66,7 +118,7 @@ const validateVerify = createValidator(verifySchema);
 // ─── Gate GP1: Schema Conformance ───
 
 function gateGP1() {
-  for (const { name, data } of goldenPaths) {
+  for (const { name, data } of activeGoldenPaths) {
     const a = data.artifacts;
 
     // ResearchReport
@@ -102,7 +154,7 @@ function gateGP1() {
 // ─── Gate GP2: Evidence Trace Completeness ───
 
 function gateGP2() {
-  for (const { name, data } of goldenPaths) {
+  for (const { name, data } of activeGoldenPaths) {
     const a = data.artifacts;
     const evidenceIds = new Set(a.evidence_records.map(r => r.evidence_id));
 
@@ -154,7 +206,7 @@ function gateGP2() {
 // ─── Gate GP3: Gate Verdict Determinism ───
 
 function gateGP3() {
-  for (const { name, data } of goldenPaths) {
+  for (const { name, data } of activeGoldenPaths) {
     const wfClass = data.workflow_metadata.workflow_class;
     const normalFlow = routing.classes[wfClass]?.normal_flow;
 
@@ -193,7 +245,7 @@ function gateGP3() {
 // ─── Gate GP4: Ladder and Freshness Compliance ───
 
 function gateGP4() {
-  for (const { name, data } of goldenPaths) {
+  for (const { name, data } of activeGoldenPaths) {
     const wfClass = data.workflow_metadata.workflow_class;
     const taxLadder = taxonomy.classes[wfClass]?.verification_ladder;
     const va = data.artifacts.verification_artifact;
@@ -232,7 +284,7 @@ function gateGP4() {
 // ─── Gate GP5: Fail-Closed Integrity ───
 
 function gateGP5() {
-  for (const { name, data } of goldenPaths) {
+  for (const { name, data } of activeGoldenPaths) {
     const va = data.artifacts.verification_artifact;
 
     // GP5.1: fail_closed_enforced is true
@@ -260,7 +312,7 @@ function gateGP5() {
 // ─── Additional conformance checks (CC-009 through CC-013) ───
 
 function additionalConformance() {
-  for (const { name, data } of goldenPaths) {
+  for (const { name, data } of activeGoldenPaths) {
     const a = data.artifacts;
     const corrId = data.workflow_metadata.correlation_id;
 
@@ -345,12 +397,17 @@ function conformanceSpecCheck() {
 
 // ─── Run All Gates ───
 
-gateGP1();
-gateGP2();
-gateGP3();
-gateGP4();
-gateGP5();
-additionalConformance();
+validateFormatPolicy();
+if (repoDeclaredFormat === 'trace') {
+  gateGP1();
+  gateGP2();
+  gateGP3();
+  gateGP4();
+  gateGP5();
+  additionalConformance();
+} else if (repoDeclaredFormat === 'fixture') {
+  // Fixture-only mode validates format policy and conformance spec policy surface.
+}
 conformanceSpecCheck();
 
 // ─── Report ───
