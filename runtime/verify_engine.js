@@ -11,7 +11,7 @@ class VerifyEngine {
     const configPath = opts.configPath || path.join(ROOT, 'config', 'runtime.json');
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
-    this.contract = JSON.parse(fs.readFileSync(path.join(ROOT, config.spec_paths.verify_contract), 'utf8'));
+    this.contract = JSON.parse(fs.readFileSync(path.join(ROOT, config.spec_paths.verify_contract_legacy), 'utf8'));
     this.engineSpec = JSON.parse(fs.readFileSync(path.join(ROOT, config.spec_paths.verify_engine), 'utf8'));
     this.taxonomy = JSON.parse(fs.readFileSync(path.join(ROOT, config.policy_paths.workflow_taxonomy), 'utf8'));
     this.routing = JSON.parse(fs.readFileSync(path.join(ROOT, config.policy_paths.routing_policy), 'utf8'));

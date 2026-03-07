@@ -5,7 +5,10 @@
   "spec_paths": {
     "state_machine": "specs/task1/v1/runtime-state-machine-v1.json",
     "role_authority_matrix": "specs/task1/v1/role-authority-matrix.json",
-    "verify_contract": "specs/task1/v1/VerifyMCP-contract.json",
+    "verify_contract": "contracts/v1/verify_contract.md",
+    "verify_request_schema": "contracts/v1/verify_request.schema.json",
+    "verify_response_schema": "contracts/v1/verify_response.schema.json",
+    "verify_contract_legacy": "specs/task1/v1/VerifyMCP-contract.json",
     "schemas": "specs/task1/v1/schemas",
     "ownership": "specs/task1/v1/ownership",
     "examples": "specs/task1/v1/examples",
