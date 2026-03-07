@@ -130,7 +130,8 @@ class Orchestrator {
       const allResolved = (va.criteria_results || []).every(cr =>
         (cr.evidence_ids || []).every(id => evIds.has(id))
       );
-      proofVerdict = (va.overall_status === 'pass' && allResolved) ? 'pass' : 'fail';
+      const nonFailure = (va.overall_status === 'pass' || va.overall_status === 'warn');
+      proofVerdict = (nonFailure && allResolved) ? va.overall_status : 'fail';
       fs.writeFileSync(path.join(runDir, 'proof.json'), JSON.stringify({
         correlation_id: correlationId,
         workflow_class: workflowClass,
@@ -165,7 +166,8 @@ class Orchestrator {
 
     // Fail-closed: proof failure downgrades run status
     const flowStatus = runState.current_state === 'complete' ? 'pass' : (runState.current_state === 'escalation' ? 'blocked' : 'fail');
-    const finalStatus = (flowStatus === 'pass' && proofVerdict !== 'pass') ? 'fail' : flowStatus;
+    const proofIsSuccess = (proofVerdict === 'pass' || proofVerdict === 'warn');
+    const finalStatus = (flowStatus === 'pass' && !proofIsSuccess) ? 'fail' : flowStatus;
 
     return {
       status: finalStatus,
