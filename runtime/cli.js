@@ -48,13 +48,14 @@ async function runGoldenPath(name) {
   return result.status === 'pass' && conformanceOk;
 }
 
-async function runWorkflow(workflowClass, goal) {
+async function runWorkflow(workflowClass, goal, opts = {}) {
   console.log(`Running workflow: ${workflowClass}`);
   console.log(`  Goal: ${goal}`);
+  if (opts.correlation_id) console.log(`  Correlation ID: ${opts.correlation_id}`);
   console.log();
 
   const orch = createOrchestrator();
-  const result = await orch.run(workflowClass, goal);
+  const result = await orch.run(workflowClass, goal, opts);
 
   printResult(result);
 
@@ -114,13 +115,29 @@ async function main() {
     process.exit(ok ? 0 : 1);
 
   } else if (command === 'run') {
-    const wfClass = args[1];
-    const goal = args.slice(2).join(' ') || 'Default goal';
+    // Support: run --request <file.json>  OR  run <workflow_class> [goal]
+    const requestIdx = args.indexOf('--request');
+    let wfClass, goal, opts = {};
+    if (requestIdx !== -1 && args[requestIdx + 1]) {
+      const reqFile = args[requestIdx + 1];
+      if (!fs.existsSync(reqFile)) {
+        console.error(`Request file not found: ${reqFile}`);
+        process.exit(1);
+      }
+      const req = JSON.parse(fs.readFileSync(reqFile, 'utf8'));
+      wfClass = req.workflow_class;
+      goal = req.goal || 'Default goal';
+      if (req.correlation_id) opts.correlation_id = req.correlation_id;
+    } else {
+      wfClass = args[1];
+      goal = args.slice(2).join(' ') || 'Default goal';
+    }
     if (!wfClass) {
       console.error('Usage: supersystem run <workflow_class> [goal]');
+      console.error('       supersystem run --request <file.json>');
       process.exit(1);
     }
-    const ok = await runWorkflow(wfClass, goal);
+    const ok = await runWorkflow(wfClass, goal, opts);
     process.exit(ok ? 0 : 1);
 
   } else if (command === 'validate-run') {
@@ -140,12 +157,14 @@ async function main() {
     console.log('Commands:');
     console.log('  golden <code_change|mcp_tool>        Run golden path end-to-end + validate output');
     console.log('  run <workflow_class> [goal]           Run workflow with stubs + validate output');
+    console.log('  run --request <file.json>             Run from canonical task request file');
     console.log('  validate-run <out/<correlation_id>>   Validate any run output directory');
     console.log('  validate-all                          Run all spec validators (task1-5)');
     console.log();
     console.log('Examples:');
     console.log('  npx supersystem golden code_change');
     console.log('  npx supersystem run code_change "Add /healthz endpoint"');
+    console.log('  npx supersystem run --request task.json');
     console.log('  npx supersystem validate-run out/abc123-def4-...');
     process.exit(0);
   }

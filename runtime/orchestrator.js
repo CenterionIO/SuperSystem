@@ -38,8 +38,8 @@ class Orchestrator {
     this.adapters[role] = adapter;
   }
 
-  async run(workflowClass, goal) {
-    const correlationId = crypto.randomUUID();
+  async run(workflowClass, goal, opts = {}) {
+    const correlationId = opts.correlation_id || crypto.randomUUID();
     const normalFlow = this.policy.normalFlow(workflowClass);
     if (!normalFlow || normalFlow.length === 0) {
       return { status: 'blocked', reason: `No routing for workflow_class: ${workflowClass}` };
