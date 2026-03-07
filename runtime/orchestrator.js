@@ -136,10 +136,12 @@ class Orchestrator {
         correlation_id: correlationId,
         workflow_class: workflowClass,
         verdict: proofVerdict,
+        overall_status: proofVerdict,
         created_at: new Date().toISOString(),
         evidence_count: ers.length,
         criteria_count: (va.criteria_results || []).length,
         all_evidence_resolved: allResolved,
+        evidence_linkage_resolved: allResolved,
       }, null, 2), 'utf8');
     }
 
@@ -152,14 +154,17 @@ class Orchestrator {
         const content = fs.readFileSync(filePath, 'utf8');
         manifestEntries.push({
           file,
+          path: file,
           sha256: crypto.createHash('sha256').update(content).digest('hex'),
           size_bytes: Buffer.byteLength(content, 'utf8'),
         });
       }
     }
     fs.writeFileSync(path.join(runDir, 'manifest.json'), JSON.stringify({
+      schema_version: 'v1',
       correlation_id: correlationId,
       workflow_class: workflowClass,
+      required_artifacts: manifestArtifacts,
       created_at: new Date().toISOString(),
       artifacts: manifestEntries,
     }, null, 2), 'utf8');

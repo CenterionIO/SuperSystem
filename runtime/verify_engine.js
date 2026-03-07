@@ -138,6 +138,7 @@ class VerifyEngine {
       created_at: new Date().toISOString(),
       overall_status: overallStatus,
       criteria_results: criteriaResults,
+      checks: criteriaResults,
       freshness_results: {
         freshness_required: freshnessRequired,
         checks_performed: [],
@@ -149,6 +150,7 @@ class VerifyEngine {
         compliant: ladderCompliant,
       },
       fail_closed_enforced: true,
+      fail_closed: true,
       warn_rationale: null,
       council_override: null,
       artifact_hash: '',
