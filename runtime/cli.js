@@ -128,6 +128,12 @@ async function main() {
       wfClass = req.workflow_class;
       goal = req.goal || 'Default goal';
       if (req.correlation_id) opts.correlation_id = req.correlation_id;
+      if (req.risk_tier) opts.risk_tier = req.risk_tier;
+      if (req.autonomy_mode) opts.autonomy_mode = req.autonomy_mode;
+      if (Array.isArray(req.required_checks)) opts.required_checks = req.required_checks;
+      if (Array.isArray(req.requested_checks)) opts.requested_checks = req.requested_checks;
+      if (req.council_override_requested === true) opts.council_override_requested = true;
+      if (Array.isArray(req.council_override_artifacts)) opts.council_override_artifacts = req.council_override_artifacts;
       if (req.simulate_platform_error === true) opts.simulate_platform_error = true;
       if (req.simulate_workflow_error === true) opts.simulate_workflow_error = true;
     } else {

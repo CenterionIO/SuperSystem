@@ -19,6 +19,8 @@ class Orchestrator {
     this.config = opts.config || JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'runtime.json'), 'utf8'));
     this.loopControl = JSON.parse(fs.readFileSync(path.join(ROOT, this.config.spec_paths.loop_control), 'utf8'));
     this.gateSequence = JSON.parse(fs.readFileSync(path.join(ROOT, this.config.spec_paths.gate_sequence), 'utf8'));
+    this.riskTiers = JSON.parse(fs.readFileSync(path.join(ROOT, 'specs', 'task7', 'v1', 'risk-tiers-policy.json'), 'utf8'));
+    this.autonomyModes = JSON.parse(fs.readFileSync(path.join(ROOT, 'specs', 'task6', 'v1', 'autonomy-modes-policy.json'), 'utf8'));
 
     const outDir = path.join(ROOT, this.config.output_dir || 'out');
     const evidenceDir = path.join(ROOT, this.config.evidence_dir || 'out/evidence');
@@ -51,6 +53,8 @@ class Orchestrator {
       goal,
       simulate_platform_error: opts.simulate_platform_error === true,
       simulate_workflow_error: opts.simulate_workflow_error === true,
+      risk_tier: null,
+      autonomy_mode: null,
       current_state: normalFlow[0],
       transitions: [],
       artifacts: {},
@@ -59,11 +63,21 @@ class Orchestrator {
       retry_counts: {},
     };
 
-    try {
-      await this._executeFlow(runState, normalFlow);
-    } catch (err) {
-      this._transition(runState, 'escalation', `Error: ${err.message}`);
-      runState.error = err.message;
+    const preflight = this._preflight(runState, normalFlow, opts);
+    if (preflight.blocked) {
+      runState.risk_tier = preflight.risk_tier || null;
+      runState.autonomy_mode = preflight.autonomy_mode || null;
+      runState.blocked_reason = preflight.reason;
+      this._transition(runState, 'blocked', `Preflight blocked: ${preflight.reason}`);
+    } else {
+      runState.risk_tier = preflight.risk_tier || null;
+      runState.autonomy_mode = preflight.autonomy_mode || null;
+      try {
+        await this._executeFlow(runState, normalFlow);
+      } catch (err) {
+        this._transition(runState, 'escalation', `Error: ${err.message}`);
+        runState.error = err.message;
+      }
     }
 
     // Persist run
@@ -103,6 +117,9 @@ class Orchestrator {
       correlation_id: correlationId,
       workflow_class: workflowClass,
       goal,
+      risk_tier: runState.risk_tier,
+      autonomy_mode: runState.autonomy_mode,
+      blocked_reason: runState.blocked_reason || null,
       requested_at: runState.started_at,
     }, null, 2), 'utf8');
 
@@ -145,6 +162,22 @@ class Orchestrator {
         all_evidence_resolved: allResolved,
         evidence_linkage_resolved: allResolved,
       }, null, 2), 'utf8');
+    } else {
+      const blockedByPreflight = !!runState.blocked_reason;
+      const fallbackVerdict = blockedByPreflight ? 'blocked' : 'fail';
+      proofVerdict = fallbackVerdict;
+      fs.writeFileSync(path.join(runDir, 'proof.json'), JSON.stringify({
+        correlation_id: correlationId,
+        workflow_class: workflowClass,
+        verdict: fallbackVerdict,
+        overall_status: fallbackVerdict,
+        created_at: new Date().toISOString(),
+        evidence_count: 0,
+        criteria_count: 0,
+        all_evidence_resolved: false,
+        evidence_linkage_resolved: false,
+        blocked_reason: runState.blocked_reason || null,
+      }, null, 2), 'utf8');
     }
 
     // Emit manifest.json
@@ -172,7 +205,7 @@ class Orchestrator {
     }, null, 2), 'utf8');
 
     // Fail-closed: proof failure downgrades run status
-    const blockedStates = new Set(['escalation', 'plan_blocker', 'blocked_platform', 'platform_error']);
+    const blockedStates = new Set(['escalation', 'plan_blocker', 'blocked_platform', 'platform_error', 'blocked']);
     const flowStatus = runState.current_state === 'complete'
       ? 'pass'
       : (blockedStates.has(runState.current_state) ? 'blocked' : 'fail');
@@ -187,6 +220,85 @@ class Orchestrator {
       artifacts: Object.keys(runState.artifacts),
       output_dir: runDir,
     };
+  }
+
+  _normalizeRiskTier(raw) {
+    const value = String(raw || '').trim().toLowerCase();
+    if (value === 'medium') return 'med';
+    if (value === 'med' || value === 'low' || value === 'high') return value;
+    return null;
+  }
+
+  _autonomyRank(mode) {
+    const ranks = { approve_each: 0, approve_final: 1, full_auto: 2 };
+    return Object.prototype.hasOwnProperty.call(ranks, mode) ? ranks[mode] : null;
+  }
+
+  _preflight(run, normalFlow, opts) {
+    const classConfig = this.policy.classConfig(run.workflow_class) || {};
+    const riskTier = this._normalizeRiskTier(opts.risk_tier || classConfig.default_risk_tier);
+    const autonomyMode = String(opts.autonomy_mode || classConfig.default_autonomy_mode || '').trim();
+    const tierRules = this.riskTiers.tier_rules || {};
+    const tierRule = riskTier ? tierRules[riskTier] : null;
+
+    if (!riskTier || !tierRule) {
+      return { blocked: true, reason: `Unknown or unsupported risk_tier for workflow_class ${run.workflow_class}`, risk_tier: riskTier, autonomy_mode: autonomyMode };
+    }
+
+    if (!this.autonomyModes.modes || !this.autonomyModes.modes[autonomyMode]) {
+      return { blocked: true, reason: `Unknown autonomy_mode: ${autonomyMode}`, risk_tier: riskTier, autonomy_mode: autonomyMode };
+    }
+
+    const allowedAutonomy = String((tierRule.max_autonomy || tierRule.autonomy || '')).trim();
+    const requestedRank = this._autonomyRank(autonomyMode);
+    const allowedRank = this._autonomyRank(allowedAutonomy);
+    if (requestedRank === null || allowedRank === null) {
+      return { blocked: true, reason: `Invalid autonomy ceiling for tier ${riskTier}`, risk_tier: riskTier, autonomy_mode: autonomyMode };
+    }
+    if (requestedRank > allowedRank) {
+      return { blocked: true, reason: `autonomy_mode ${autonomyMode} exceeds allowed ceiling ${allowedAutonomy} for tier ${riskTier}`, risk_tier: riskTier, autonomy_mode: autonomyMode };
+    }
+
+    const requiredGates = Array.isArray(tierRule.required_gates) ? tierRule.required_gates : [];
+    const flowGates = new Set((normalFlow || []).filter(s => s.endsWith('_review')));
+    for (const gate of requiredGates) {
+      if (!flowGates.has(gate)) {
+        return { blocked: true, reason: `required gate ${gate} missing for workflow_class ${run.workflow_class} at tier ${riskTier}`, risk_tier: riskTier, autonomy_mode: autonomyMode };
+      }
+    }
+
+    const requiredChecks = Array.isArray(classConfig.required_checks) ? classConfig.required_checks : [];
+    if (requiredChecks.length === 0) {
+      return { blocked: true, reason: `No required_checks configured for workflow_class ${run.workflow_class}`, risk_tier: riskTier, autonomy_mode: autonomyMode };
+    }
+    const requestedChecks = Array.isArray(opts.required_checks) ? opts.required_checks : (Array.isArray(opts.requested_checks) ? opts.requested_checks : null);
+    if (requestedChecks) {
+      const have = new Set(requestedChecks.map(String));
+      const missing = requiredChecks.filter(c => !have.has(String(c)));
+      if (missing.length > 0) {
+        return { blocked: true, reason: `required check(s) missing for preflight: ${missing.join(', ')}`, risk_tier: riskTier, autonomy_mode: autonomyMode };
+      }
+    }
+
+    const precedence = Array.isArray(this.policy.override?.precedence) ? this.policy.override.precedence : [];
+    if (precedence.length === 0 || precedence[0] !== 'fail_closed_rules') {
+      return { blocked: true, reason: 'override_policy precedence invalid or not fail-closed-first', risk_tier: riskTier, autonomy_mode: autonomyMode };
+    }
+    if (opts.council_override_requested === true) {
+      const council = this.policy.override?.council_override || {};
+      if (council.enabled !== true) {
+        return { blocked: true, reason: 'council override requested but policy disables council_override', risk_tier: riskTier, autonomy_mode: autonomyMode };
+      }
+      const requiredArtifacts = Array.isArray(council.requires_artifacts) ? council.requires_artifacts : [];
+      const providedArtifacts = Array.isArray(opts.council_override_artifacts) ? opts.council_override_artifacts.map(String) : [];
+      const providedSet = new Set(providedArtifacts);
+      const missingArtifacts = requiredArtifacts.filter(a => !providedSet.has(String(a)));
+      if (missingArtifacts.length > 0) {
+        return { blocked: true, reason: `council override artifacts missing: ${missingArtifacts.join(', ')}`, risk_tier: riskTier, autonomy_mode: autonomyMode };
+      }
+    }
+
+    return { blocked: false, risk_tier: riskTier, autonomy_mode: autonomyMode };
   }
 
   async _executeFlow(run, normalFlow) {
