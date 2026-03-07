@@ -128,6 +128,8 @@ async function main() {
       wfClass = req.workflow_class;
       goal = req.goal || 'Default goal';
       if (req.correlation_id) opts.correlation_id = req.correlation_id;
+      if (req.simulate_platform_error === true) opts.simulate_platform_error = true;
+      if (req.simulate_workflow_error === true) opts.simulate_workflow_error = true;
     } else {
       wfClass = args[1];
       goal = args.slice(2).join(' ') || 'Default goal';

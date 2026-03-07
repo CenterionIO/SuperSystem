@@ -4,6 +4,12 @@ const crypto = require('crypto');
 
 class PlannerStub {
   async plan(correlationId, workflowClass, goal, researchReport) {
+    if (typeof goal === 'string' && /(ambiguous|plan_blocker)/i.test(goal)) {
+      return {
+        _plan_blocker: true,
+        blocker_reason: 'Planner detected ambiguous goal; clarification required.',
+      };
+    }
     const researchReportId = researchReport ? researchReport.research_report_id : null;
 
     return {

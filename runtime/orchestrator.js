@@ -49,6 +49,8 @@ class Orchestrator {
       correlation_id: correlationId,
       workflow_class: workflowClass,
       goal,
+      simulate_platform_error: opts.simulate_platform_error === true,
+      simulate_workflow_error: opts.simulate_workflow_error === true,
       current_state: normalFlow[0],
       transitions: [],
       artifacts: {},
@@ -130,7 +132,7 @@ class Orchestrator {
       const allResolved = (va.criteria_results || []).every(cr =>
         (cr.evidence_ids || []).every(id => evIds.has(id))
       );
-      const nonFailure = (va.overall_status === 'pass' || va.overall_status === 'warn');
+      const nonFailure = (va.overall_status === 'pass');
       proofVerdict = (nonFailure && allResolved) ? va.overall_status : 'fail';
       fs.writeFileSync(path.join(runDir, 'proof.json'), JSON.stringify({
         correlation_id: correlationId,
@@ -170,8 +172,11 @@ class Orchestrator {
     }, null, 2), 'utf8');
 
     // Fail-closed: proof failure downgrades run status
-    const flowStatus = runState.current_state === 'complete' ? 'pass' : (runState.current_state === 'escalation' ? 'blocked' : 'fail');
-    const proofIsSuccess = (proofVerdict === 'pass' || proofVerdict === 'warn');
+    const blockedStates = new Set(['escalation', 'plan_blocker', 'blocked_platform', 'platform_error']);
+    const flowStatus = runState.current_state === 'complete'
+      ? 'pass'
+      : (blockedStates.has(runState.current_state) ? 'blocked' : 'fail');
+    const proofIsSuccess = (proofVerdict === 'pass');
     const finalStatus = (flowStatus === 'pass' && !proofIsSuccess) ? 'fail' : flowStatus;
 
     return {
@@ -203,6 +208,17 @@ class Orchestrator {
       // Execute state
       const result = await this._executeState(run, targetState);
       if (!result) continue;
+
+      if (result.plan_blocker) {
+        this._transition(run, 'plan_blocker', result.reason || 'Planner reported ambiguity');
+        return;
+      }
+
+      if (result.platform_error) {
+        this._transition(run, 'platform_error', result.platform_error);
+        this._transition(run, 'blocked_platform', 'Automatic route after platform_error');
+        return;
+      }
 
       if (result.error) {
         this._transition(run, 'workflow_error', result.error);
@@ -272,6 +288,9 @@ class Orchestrator {
     const adapter = this.adapters.planner;
     if (!adapter) return { error: 'No planner adapter configured' };
     const plan = await adapter.plan(run.correlation_id, run.workflow_class, run.goal, run.artifacts.research_report);
+    if (plan && plan._plan_blocker) {
+      return { plan_blocker: true, reason: plan.blocker_reason || 'Planner ambiguity' };
+    }
     run.artifacts.execution_plan = plan;
     return {};
   }
@@ -281,6 +300,12 @@ class Orchestrator {
     if (!adapter) return { error: 'No builder adapter configured' };
     const result = await adapter.build(run.correlation_id, run.artifacts.execution_plan, this.registry);
     run.artifacts.build_report = result.build_report;
+    if (run.simulate_platform_error) {
+      return { platform_error: 'Simulated platform error during building' };
+    }
+    if (run.simulate_workflow_error) {
+      return { error: 'Simulated workflow error during building' };
+    }
     return {};
   }
 
